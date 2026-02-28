@@ -13,7 +13,8 @@
       "Bash(xcrun simctl launch:*)",
       "Bash(xcrun simctl terminate:*)",
       "Bash(xcrun simctl listapps:*)",
-      "Bash(__NEW_LINE_a0535c2c481d1820__ xcrun simctl uninstall booted com.bvanriessen.listapp)"
+      "Bash(__NEW_LINE_a0535c2c481d1820__ xcrun simctl uninstall booted com.bvanriessen.listapp)",
+      "Bash(xcrun simctl uninstall:*)"
     ]
   }
 }

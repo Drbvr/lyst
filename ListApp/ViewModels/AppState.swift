@@ -23,6 +23,29 @@ class AppState {
         }
     }
 
+    /// Reload items from a specific vault URL (called when user picks a folder)
+    func reloadItems(from vaultURL: URL) async {
+        isLoadingItems = true
+        defer { isLoadingItems = false }
+
+        var loadedItems: [Item] = []
+        let coreFileSystem = DefaultFileSystemManager()
+        let todoParser = ObsidianTodoParser()
+
+        if case .success(let filePaths) = coreFileSystem.scanDirectory(at: vaultURL.path, recursive: true) {
+            for filePath in filePaths {
+                if case .success(let content) = coreFileSystem.readFile(at: filePath) {
+                    let parsedItems = todoParser.parseTodos(from: content, sourceFile: filePath)
+                    loadedItems.append(contentsOf: parsedItems)
+                }
+            }
+        }
+
+        if !loadedItems.isEmpty {
+            self.items = loadedItems
+        }
+    }
+
     /// Load items from vault asynchronously to avoid blocking UI thread
     private func loadItemsFromVault() async {
         isLoadingItems = true

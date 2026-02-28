@@ -6,6 +6,7 @@ struct FilterView: View {
     @State private var selectedTags: Set<String> = []
     @State private var selectedTypes: Set<String> = []
     @State private var completionFilter: CompletionFilter = .all
+    @State private var navigateToResults = false
 
     private enum CompletionFilter: String, CaseIterable {
         case all = "All"
@@ -25,54 +26,111 @@ struct FilterView: View {
         appState.filteredItems(with: currentFilters)
     }
 
+    private var hasActiveFilters: Bool {
+        !selectedTags.isEmpty || !selectedTypes.isEmpty || completionFilter != .all
+    }
+
     var body: some View {
-        Form {
-            Section("Item Types") {
-                ForEach(appState.itemTypeNames, id: \.self) { type in
-                    Toggle(type.capitalized, isOn: Binding(
-                        get: { selectedTypes.contains(type) },
-                        set: { if $0 { selectedTypes.insert(type) } else { selectedTypes.remove(type) } }
-                    ))
-                }
-            }
-
-            Section("Status") {
-                Picker("Completion", selection: $completionFilter) {
-                    ForEach(CompletionFilter.allCases, id: \.self) { filter in
-                        Text(filter.rawValue).tag(filter)
-                    }
-                }
-                .pickerStyle(.segmented)
-            }
-
-            Section("Tags") {
-                ForEach(appState.allTags, id: \.self) { tag in
-                    Toggle(isOn: Binding(
-                        get: { selectedTags.contains(tag) },
-                        set: { if $0 { selectedTags.insert(tag) } else { selectedTags.remove(tag) } }
-                    )) {
-                        TagChipView(tag: tag)
-                    }
-                }
-            }
-
-            Section {
-                NavigationLink {
-                    ItemListView(
-                        title: "Filtered Results",
-                        items: filteredItems,
-                        displayStyle: .list
-                    )
-                } label: {
-                    HStack {
-                        Text("View Results")
-                        Spacer()
-                        Text("\(filteredItems.count) items")
+        VStack(spacing: 0) {
+            // Sticky result bar at top
+            NavigationLink(destination: ItemListView(
+                title: filterTitle,
+                items: filteredItems,
+                displayStyle: .list
+            )) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(filterTitle)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text(hasActiveFilters
+                             ? "\(filteredItems.count) of \(appState.items.count) items"
+                             : "All \(appState.items.count) items")
+                            .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(hasActiveFilters ? Color.accentColor.opacity(0.1) : Color.secondary.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(hasActiveFilters ? Color.accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
+                )
+            }
+            .padding(.horizontal)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            // Filters below
+            Form {
+                // Reset button when filters are active
+                if hasActiveFilters {
+                    Section {
+                        Button(role: .destructive) {
+                            selectedTags = []
+                            selectedTypes = []
+                            completionFilter = .all
+                        } label: {
+                            Label("Reset All Filters", systemImage: "xmark.circle")
+                        }
+                    }
+                }
+
+                Section("Type") {
+                    ForEach(appState.itemTypeNames, id: \.self) { type in
+                        Toggle(isOn: Binding(
+                            get: { selectedTypes.contains(type) },
+                            set: { if $0 { selectedTypes.insert(type) } else { selectedTypes.remove(type) } }
+                        )) {
+                            Label(type.capitalized, systemImage: iconForType(type))
+                        }
+                    }
+                }
+
+                Section("Status") {
+                    Picker("Completion", selection: $completionFilter) {
+                        ForEach(CompletionFilter.allCases, id: \.self) { filter in
+                            Text(filter.rawValue).tag(filter)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section("Tags") {
+                    ForEach(appState.allTags, id: \.self) { tag in
+                        Toggle(isOn: Binding(
+                            get: { selectedTags.contains(tag) },
+                            set: { if $0 { selectedTags.insert(tag) } else { selectedTags.remove(tag) } }
+                        )) {
+                            TagChipView(tag: tag)
+                        }
                     }
                 }
             }
         }
-        .navigationTitle("Custom Filter")
+        .navigationTitle("Filter")
+    }
+
+    private var filterTitle: String {
+        if !hasActiveFilters { return "All Items" }
+        var parts: [String] = []
+        if !selectedTypes.isEmpty { parts.append(selectedTypes.map(\.capitalized).joined(separator: ", ")) }
+        if completionFilter != .all { parts.append(completionFilter.rawValue) }
+        if !selectedTags.isEmpty { parts.append("\(selectedTags.count) tag\(selectedTags.count == 1 ? "" : "s")") }
+        return parts.joined(separator: " · ")
+    }
+
+    private func iconForType(_ type: String) -> String {
+        switch type {
+        case "movie": return "film"
+        case "book": return "book.closed"
+        case "todo": return "checkmark.circle"
+        default: return "doc.text"
+        }
     }
 }
