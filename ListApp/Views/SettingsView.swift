@@ -193,7 +193,9 @@ struct FolderPickerView: View {
                 }
             }
             .navigationTitle("Choose Vault")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

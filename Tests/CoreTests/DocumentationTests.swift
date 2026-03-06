@@ -7,7 +7,13 @@ import Core
 
 final class DocumentationTests: XCTestCase {
 
-    let projectRoot = "/home/cmuser/list-app"
+    var projectRoot: String {
+        URL(fileURLWithPath: #file)
+            .deletingLastPathComponent()  // CoreTests/
+            .deletingLastPathComponent()  // Tests/
+            .deletingLastPathComponent()  // project root
+            .path
+    }
 
     func testREADMEExists() {
         let readme = projectRoot + "/README.md"
