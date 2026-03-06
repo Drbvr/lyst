@@ -27,7 +27,9 @@ struct ItemDetailView: View {
             }
         }
         .navigationTitle(currentItem.title)
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -247,7 +249,9 @@ struct EditTodoView: View {
                 Section {
                     TextField("work, project/alpha", text: $tagsText)
                         .autocorrectionDisabled()
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
+                        #endif
                 } header: {
                     Text("Tags")
                 } footer: {
@@ -255,7 +259,9 @@ struct EditTodoView: View {
                 }
             }
             .navigationTitle("Edit Todo")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
