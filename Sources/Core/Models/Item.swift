@@ -1,7 +1,15 @@
 import Foundation
 
 /// Represents a single item in the list system
-public struct Item: Identifiable, Codable {
+public struct Item: Identifiable, Codable, Hashable {
+    public static func == (lhs: Item, rhs: Item) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
     public let id: UUID
     public var type: String  // "todo", "book", "movie", etc.
     public var title: String

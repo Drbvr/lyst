@@ -80,6 +80,7 @@ final class ViewTests: XCTestCase {
 
         XCTAssertEqual(view.name, "All Tasks")
         XCTAssertEqual(view.displayStyle, .list)
+        XCTAssertNotNil(view.id)
     }
 
     func testSavedViewWithFilters() {
@@ -128,6 +129,7 @@ final class ViewTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let decodedView = try decoder.decode(SavedView.self, from: data)
 
+        XCTAssertEqual(decodedView.id, originalView.id)
         XCTAssertEqual(decodedView.name, originalView.name)
         XCTAssertEqual(decodedView.displayStyle, originalView.displayStyle)
         XCTAssertEqual(decodedView.filters.tags, originalView.filters.tags)
@@ -136,6 +138,7 @@ final class ViewTests: XCTestCase {
     func testSavedViewJSON() throws {
         let json = """
         {
+            "id": "550E8400-E29B-41D4-A716-446655440000",
             "name": "Urgent Tasks",
             "filters": {
                 "tags": ["work/*", "urgent"],
@@ -153,10 +156,39 @@ final class ViewTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let view = try decoder.decode(SavedView.self, from: json.data(using: .utf8)!)
 
+        XCTAssertEqual(view.id, UUID(uuidString: "550E8400-E29B-41D4-A716-446655440000"))
         XCTAssertEqual(view.name, "Urgent Tasks")
         XCTAssertEqual(view.displayStyle, .list)
         XCTAssertEqual(view.filters.tags?.count, 2)
         XCTAssertEqual(view.filters.completed, false)
+    }
+
+    func testSavedViewIdentifiable() {
+        let view1 = SavedView(name: "View 1")
+        let view2 = SavedView(name: "View 2")
+
+        XCTAssertNotEqual(view1.id, view2.id)
+    }
+
+    func testSavedViewHashable() {
+        let id = UUID()
+        let view1 = SavedView(id: id, name: "Same View")
+        let view2 = SavedView(id: id, name: "Same View")
+
+        XCTAssertEqual(view1, view2)
+        XCTAssertEqual(view1.hashValue, view2.hashValue)
+
+        let view3 = SavedView(name: "Different View")
+        XCTAssertNotEqual(view1, view3)
+    }
+
+    func testViewFiltersEquatable() {
+        let filters1 = ViewFilters(tags: ["work/*"], completed: false)
+        let filters2 = ViewFilters(tags: ["work/*"], completed: false)
+        let filters3 = ViewFilters(tags: ["personal/*"], completed: true)
+
+        XCTAssertEqual(filters1, filters2)
+        XCTAssertNotEqual(filters1, filters3)
     }
 
     func testViewFiltersWithFolders() {

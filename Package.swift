@@ -5,12 +5,22 @@ import PackageDescription
 
 let package = Package(
     name: "ListApp",
+    platforms: [
+        .iOS(.v17),
+        .macOS(.v14),
+    ],
     products: [
         .library(
             name: "Core",
             targets: ["Core"]),
     ],
     targets: [
+        .executableTarget(
+            name: "ListApp",
+            dependencies: ["Core"],
+            path: "ListApp",
+            exclude: ["Info.plist", "README.md"]
+        ),
         .target(
             name: "Core",
             path: "Sources/Core"),

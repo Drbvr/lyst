@@ -1,16 +1,19 @@
 import Foundation
 
 /// Represents a saved view configuration
-public struct SavedView: Codable {
+public struct SavedView: Identifiable, Codable, Equatable, Hashable {
+    public let id: UUID
     public let name: String
     public var filters: ViewFilters
     public var displayStyle: DisplayStyle
 
     public init(
+        id: UUID = UUID(),
         name: String,
         filters: ViewFilters = ViewFilters(),
         displayStyle: DisplayStyle = .list
     ) {
+        self.id = id
         self.name = name
         self.filters = filters
         self.displayStyle = displayStyle
@@ -18,7 +21,7 @@ public struct SavedView: Codable {
 }
 
 /// Represents filters for viewing items
-public struct ViewFilters: Codable {
+public struct ViewFilters: Codable, Equatable, Hashable {
     public var tags: [String]?  // Support wildcards like "work/*"
     public var itemTypes: [String]?
     public var dueBefore: Date?
@@ -44,7 +47,7 @@ public struct ViewFilters: Codable {
 }
 
 /// Represents how a view should be displayed
-public enum DisplayStyle: String, Codable {
+public enum DisplayStyle: String, Codable, Hashable {
     case list
     case card
 }

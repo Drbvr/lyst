@@ -8,10 +8,26 @@ public protocol MarkdownParser {
 /// Obsidian-compatible todo parser for markdown files
 public class ObsidianTodoParser: MarkdownParser {
 
+    private let yamlParser = YAMLFrontmatterParser()
+
     public init() {}
 
-    /// Parses markdown content and extracts todo items
+    /// Parses markdown content and extracts items.
+    /// Handles two formats:
+    ///   1. YAML frontmatter with type field → creates one Item per file (books, movies, etc.)
+    ///   2. Checkbox lines (- [ ] / - [x]) → creates one Item per checkbox (todos)
     public func parseTodos(from content: String, sourceFile: String) -> [Item] {
+        // Check for YAML frontmatter first
+        let (yaml, body) = yamlParser.extractFrontmatter(from: content)
+
+        if let yaml = yaml {
+            // File has frontmatter — create a single item from it
+            if let item = createItemFromFrontmatter(yaml: yaml, body: body, sourceFile: sourceFile) {
+                return [item]
+            }
+        }
+
+        // No frontmatter (or unrecognized) — parse checkbox lines as todos
         let lines = content.components(separatedBy: .newlines)
         var items: [Item] = []
         var currentTodo: (checkbox: Substring, text: String)?
@@ -201,5 +217,78 @@ public class ObsidianTodoParser: MarkdownParser {
             return "low"
         }
         return nil
+    }
+
+    // MARK: - YAML Frontmatter Item Creation
+
+    /// Creates a single Item from YAML frontmatter (for books, movies, notes, etc.)
+    private func createItemFromFrontmatter(yaml: String, body: String, sourceFile: String) -> Item? {
+        // Extract the type field
+        let lines = yaml.components(separatedBy: .newlines)
+        var type: String?
+        var title: String?
+        var tagsRaw: String?
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("type:") {
+                type = trimmed.dropFirst("type:".count).trimmingCharacters(in: .whitespaces)
+            } else if trimmed.hasPrefix("title:") {
+                title = trimmed.dropFirst("title:".count).trimmingCharacters(in: .whitespaces)
+            } else if trimmed.hasPrefix("tags:") {
+                tagsRaw = trimmed.dropFirst("tags:".count).trimmingCharacters(in: .whitespaces)
+            }
+        }
+
+        guard let itemType = type, !itemType.isEmpty else {
+            return nil  // No type → not a recognized frontmatter item
+        }
+
+        // Use filename as fallback title
+        let fileName = URL(fileURLWithPath: sourceFile).deletingPathExtension().lastPathComponent
+        let itemTitle = title ?? fileName.replacingOccurrences(of: "_", with: " ")
+
+        // Parse tags from inline array format: [tag1, tag2] or bare: tag1, tag2
+        var tags: [String] = []
+        if let rawTags = tagsRaw {
+            let stripped = rawTags.trimmingCharacters(in: CharacterSet(charactersIn: "[] "))
+            tags = stripped.components(separatedBy: ",").map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }.filter { !$0.isEmpty }
+        }
+
+        // Parse all other properties
+        var properties: [String: PropertyValue] = [:]
+        if case .success(let props) = yamlParser.parseItemProperties(yaml: yaml) {
+            properties = props
+            // Remove title and tags from properties (shown separately)
+            properties.removeValue(forKey: "title")
+            properties.removeValue(forKey: "tags")
+        }
+
+        // Determine completed state from tags or properties
+        // Movies: "movies/watched" tag → completed. Books: "books/read" → completed
+        let completedByTag = tags.contains { tag in
+            tag.hasSuffix("/watched") || tag.hasSuffix("/read")
+        }
+        let completedByProp = (properties["completed"].flatMap {
+            if case .bool(let b) = $0 { return b } else { return nil }
+        }) ?? false
+        let completed = completedByTag || completedByProp
+
+        // Use date_read or date_watched as createdAt if available
+        var createdAt = Date()
+        if case .date(let d) = properties["date_read"] { createdAt = d }
+        else if case .date(let d) = properties["date_watched"] { createdAt = d }
+
+        return Item(
+            type: itemType,
+            title: itemTitle,
+            properties: properties,
+            tags: tags,
+            completed: completed,
+            sourceFile: sourceFile,
+            createdAt: createdAt
+        )
     }
 }

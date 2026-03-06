@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a flexible property value that can be different types
-public enum PropertyValue: Codable, Equatable {
+public enum PropertyValue: Codable, Equatable, Hashable {
     case text(String)
     case number(Double)
     case date(Date)
