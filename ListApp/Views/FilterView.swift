@@ -102,14 +102,21 @@ struct FilterView: View {
                 }
 
                 Section("Tags") {
-                    ForEach(appState.allTags, id: \.self) { tag in
-                        Toggle(isOn: Binding(
-                            get: { selectedTags.contains(tag) },
-                            set: { if $0 { selectedTags.insert(tag) } else { selectedTags.remove(tag) } }
-                        )) {
-                            TagChipView(tag: tag)
+                    FlowLayout(spacing: 8) {
+                        ForEach(appState.allTags, id: \.self) { tag in
+                            FilterTagChip(
+                                tag: tag,
+                                isSelected: selectedTags.contains(tag)
+                            ) {
+                                if selectedTags.contains(tag) {
+                                    selectedTags.remove(tag)
+                                } else {
+                                    selectedTags.insert(tag)
+                                }
+                            }
                         }
                     }
+                    .padding(.vertical, 6)
                 }
             }
         }
@@ -132,5 +139,30 @@ struct FilterView: View {
         case "todo": return "checkmark.circle"
         default: return "doc.text"
         }
+    }
+}
+
+// MARK: - Filter Tag Chip
+
+private struct FilterTagChip: View {
+    let tag: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("#\(tag)")
+                .font(.caption)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.12))
+                .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
     }
 }

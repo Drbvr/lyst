@@ -4,6 +4,7 @@ import Core
 struct ItemDetailView: View {
     @Environment(AppState.self) private var appState
     let item: Item
+    @State private var showEditSheet = false
 
     // Always read fresh from appState so toggling updates the view
     private var currentItem: Item {
@@ -19,7 +20,9 @@ struct ItemDetailView: View {
                 case "movie":
                     MovieDetailContent(item: currentItem)
                 default:
-                    TodoDetailContent(item: currentItem)
+                    TodoDetailContent(item: currentItem) {
+                        appState.toggleCompletion(for: currentItem)
+                    }
                 }
             }
         }
@@ -43,8 +46,17 @@ struct ItemDetailView: View {
                               systemImage: done ? "checkmark.circle.fill" : "circle")
                     }
                 }
-                .foregroundStyle(currentItem.completed ? .green : .primary)
+                .foregroundStyle(currentItem.completed ? .green : Color.accentColor)
             }
+            if currentItem.type == "todo" {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Edit") { showEditSheet = true }
+                }
+            }
+        }
+        .sheet(isPresented: $showEditSheet) {
+            EditTodoView(item: currentItem)
+                .environment(appState)
         }
     }
 }
@@ -58,7 +70,7 @@ private struct BookDetailContent: View {
             HStack(spacing: 16) {
                 Image(systemName: item.completed ? "book.closed.fill" : "book.closed")
                     .font(.system(size: 48))
-                    .foregroundStyle(item.completed ? .green : .accentColor)
+                    .foregroundStyle(item.completed ? .green : Color.accentColor)
                     .frame(width: 72, height: 72)
                     .background(Color.secondary.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -96,7 +108,7 @@ private struct MovieDetailContent: View {
             HStack(spacing: 16) {
                 Image(systemName: item.completed ? "film.fill" : "film")
                     .font(.system(size: 48))
-                    .foregroundStyle(item.completed ? .green : .accentColor)
+                    .foregroundStyle(item.completed ? .green : Color.accentColor)
                     .frame(width: 72, height: 72)
                     .background(Color.secondary.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -132,12 +144,19 @@ private struct MovieDetailContent: View {
 
 private struct TodoDetailContent: View {
     let item: Item
+    var onToggle: () -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(spacing: 12) {
-                Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
-                    .foregroundStyle(item.completed ? .green : .secondary)
+                // Tappable checkbox — calls onToggle
+                Button(action: onToggle) {
+                    Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                        .foregroundStyle(item.completed ? .green : .secondary)
+                }
+                .buttonStyle(.plain)
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.completed ? "Completed" : "Not completed").font(.headline)
                     if case .date(let date) = item.properties["dueDate"] {
@@ -164,6 +183,117 @@ private struct TodoDetailContent: View {
             MetadataSection(item: item)
         }
         .padding(.vertical)
+    }
+}
+
+// MARK: - Edit Todo Sheet
+
+struct EditTodoView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(\.dismiss) private var dismiss
+    let item: Item
+
+    @State private var title: String
+    @State private var hasDueDate: Bool
+    @State private var dueDate: Date
+    @State private var priority: String  // "", "high", "medium", "low"
+    @State private var tagsText: String  // comma-separated
+
+    init(item: Item) {
+        self.item = item
+        _title = State(initialValue: item.title)
+
+        if case .date(let d) = item.properties["dueDate"] {
+            _hasDueDate = State(initialValue: true)
+            _dueDate = State(initialValue: d)
+        } else {
+            _hasDueDate = State(initialValue: false)
+            _dueDate = State(initialValue: Date())
+        }
+
+        if case .text(let p) = item.properties["priority"] {
+            _priority = State(initialValue: p)
+        } else {
+            _priority = State(initialValue: "")
+        }
+
+        _tagsText = State(initialValue: item.tags.joined(separator: ", "))
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Title") {
+                    TextField("Title", text: $title)
+                }
+
+                Section("Due Date") {
+                    Toggle("Set due date", isOn: $hasDueDate)
+                    if hasDueDate {
+                        DatePicker("Date", selection: $dueDate, displayedComponents: .date)
+                    }
+                }
+
+                Section("Priority") {
+                    Picker("Priority", selection: $priority) {
+                        Text("None").tag("")
+                        Text("🔴 High").tag("high")
+                        Text("🟠 Medium").tag("medium")
+                        Text("🔵 Low").tag("low")
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section {
+                    TextField("work, project/alpha", text: $tagsText)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                } header: {
+                    Text("Tags")
+                } footer: {
+                    Text("Comma-separated. Use / for hierarchy, e.g. work/project")
+                }
+            }
+            .navigationTitle("Edit Todo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+
+    private func save() {
+        var updated = item
+        updated.title = title.trimmingCharacters(in: .whitespaces)
+
+        // Tags
+        updated.tags = tagsText
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        // Properties
+        var props = item.properties
+        if hasDueDate {
+            props["dueDate"] = .date(dueDate)
+        } else {
+            props.removeValue(forKey: "dueDate")
+        }
+        if priority.isEmpty {
+            props.removeValue(forKey: "priority")
+        } else {
+            props["priority"] = .text(priority)
+        }
+        updated.properties = props
+
+        appState.updateItem(updated)
+        dismiss()
     }
 }
 

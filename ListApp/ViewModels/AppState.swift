@@ -136,6 +136,15 @@ class AppState {
         items.removeAll { $0.id == item.id }
     }
 
+    /// Update an item's properties in memory (title, tags, due date, priority, etc.)
+    func updateItem(_ item: Item) {
+        if let index = items.firstIndex(where: { $0.id == item.id }) {
+            var updated = item
+            updated.updatedAt = Date()
+            items[index] = updated
+        }
+    }
+
     // MARK: - Filtering
 
     func filteredItems(for view: SavedView) -> [Item] {

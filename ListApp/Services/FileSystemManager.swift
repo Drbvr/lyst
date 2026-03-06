@@ -78,26 +78,79 @@ class AppFileSystemManager {
     }
 
     /// Toggle a todo's completion status in its source file.
-    /// Finds the line matching the item and toggles [ ] <-> [x].
+    /// Handles both checkbox-based todos ([ ]/[x]) and YAML frontmatter items (books, movies).
     func toggleTodoCompletion(_ item: Item) async -> Bool {
         error = nil
 
-        // Read the source file
         let readResult = coreFileSystem.readFile(at: item.sourceFile)
-
         guard case .success(let content) = readResult else {
             error = "Could not read source file: \(item.sourceFile)"
             return false
         }
 
-        // Split into lines and find the one matching this item
-        var lines = content.split(separator: "\n", omittingEmptySubsequences: false).map { String($0) }
+        // YAML frontmatter files start with ---
+        if content.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("---") {
+            return toggleYAMLCompletion(content: content, item: item)
+        } else {
+            return toggleCheckboxCompletion(content: content, item: item)
+        }
+    }
+
+    /// Toggle completion by updating `completed:` field in YAML frontmatter.
+    /// `item.completed` already holds the new (desired) state.
+    private func toggleYAMLCompletion(content: String, item: Item) -> Bool {
+        var lines = content.components(separatedBy: "\n")
+
+        guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else {
+            error = "Not a valid YAML frontmatter file"
+            return false
+        }
+
+        // Find the closing ---
+        var closingIdx: Int? = nil
+        for i in 1..<lines.count {
+            if lines[i].trimmingCharacters(in: .whitespaces) == "---" {
+                closingIdx = i
+                break
+            }
+        }
+        guard let closingIdx = closingIdx else {
+            error = "No closing --- in frontmatter"
+            return false
+        }
+
+        let newValue = item.completed ? "true" : "false"
+        var foundCompleted = false
+
+        for i in 1..<closingIdx {
+            if lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("completed:") {
+                lines[i] = "completed: \(newValue)"
+                foundCompleted = true
+                break
+            }
+        }
+
+        if !foundCompleted {
+            // Insert completed field just before closing ---
+            lines.insert("completed: \(newValue)", at: closingIdx)
+        }
+
+        let updatedContent = lines.joined(separator: "\n")
+        switch coreFileSystem.writeFile(at: item.sourceFile, content: updatedContent) {
+        case .success: return true
+        case .failure(let e):
+            error = "Failed to write file: \(e)"
+            return false
+        }
+    }
+
+    /// Toggle completion by flipping [ ] <-> [x] on the matching checkbox line.
+    private func toggleCheckboxCompletion(content: String, item: Item) -> Bool {
+        var lines = content.components(separatedBy: "\n")
         var found = false
 
         for (index, line) in lines.enumerated() {
-            // Look for a line with the item title and checkbox
             if line.contains(item.title) {
-                // Toggle checkbox: [ ] <-> [x]
                 if line.contains("[ ]") {
                     lines[index] = line.replacingOccurrences(of: "[ ]", with: "[x]")
                     found = true
@@ -113,15 +166,11 @@ class AppFileSystemManager {
             return false
         }
 
-        // Write the updated content back
         let updatedContent = lines.joined(separator: "\n")
-        let writeResult = coreFileSystem.writeFile(at: item.sourceFile, content: updatedContent)
-
-        switch writeResult {
-        case .success:
-            return true
-        case .failure(let writeError):
-            error = "Failed to write file: \(writeError)"
+        switch coreFileSystem.writeFile(at: item.sourceFile, content: updatedContent) {
+        case .success: return true
+        case .failure(let e):
+            error = "Failed to write file: \(e)"
             return false
         }
     }
