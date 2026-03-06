@@ -15,6 +15,12 @@ let package = Package(
             targets: ["Core"]),
     ],
     targets: [
+        .executableTarget(
+            name: "ListApp",
+            dependencies: ["Core"],
+            path: "ListApp",
+            exclude: ["Info.plist", "README.md"]
+        ),
         .target(
             name: "Core",
             path: "Sources/Core"),

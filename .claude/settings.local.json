@@ -14,7 +14,15 @@
       "Bash(xcrun simctl terminate:*)",
       "Bash(xcrun simctl listapps:*)",
       "Bash(__NEW_LINE_a0535c2c481d1820__ xcrun simctl uninstall booted com.bvanriessen.listapp)",
-      "Bash(xcrun simctl uninstall:*)"
+      "Bash(xcrun simctl uninstall:*)",
+      "mcp__XcodeBuildMCP__list_sims",
+      "mcp__XcodeBuildMCP__build_sim",
+      "mcp__XcodeBuildMCP__get_app_bundle_id",
+      "mcp__XcodeBuildMCP__open_sim",
+      "mcp__XcodeBuildMCP__install_app_sim",
+      "mcp__XcodeBuildMCP__launch_app_logs_sim",
+      "mcp__XcodeBuildMCP__screenshot",
+      "mcp__XcodeBuildMCP__snapshot_ui"
     ]
   }
 }
