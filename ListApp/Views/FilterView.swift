@@ -33,11 +33,7 @@ struct FilterView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Sticky result bar at top
-            NavigationLink(destination: ItemListView(
-                title: filterTitle,
-                items: filteredItems,
-                displayStyle: .list
-            )) {
+            NavigationLink(value: FilterResult(title: filterTitle, items: filteredItems)) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(filterTitle)
@@ -121,6 +117,13 @@ struct FilterView: View {
             }
         }
         .navigationTitle("Filter")
+        .navigationDestination(for: FilterResult.self) { result in
+            ItemListView(
+                title: result.title,
+                items: result.items,
+                displayStyle: .list
+            )
+        }
     }
 
     private var filterTitle: String {
@@ -140,6 +143,13 @@ struct FilterView: View {
         default: return "doc.text"
         }
     }
+}
+
+// MARK: - Filter Result
+
+private struct FilterResult: Hashable {
+    let title: String
+    let items: [Item]
 }
 
 // MARK: - Filter Tag Chip
