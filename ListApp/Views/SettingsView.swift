@@ -1,12 +1,17 @@
 import SwiftUI
 import Core
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
     @State private var defaultDisplayStyle = DisplayStyle.list
     @State private var showFolderPicker = false
+    @State private var showCloudPicker = false
     @State private var vaultFolderName: String = {
-        // Check if vault exists
+        // Prefer the saved display name, then check filesystem
+        if let saved = UserDefaults.standard.string(forKey: "vaultDisplayName") {
+            return saved
+        }
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let vault = docs.appendingPathComponent("ListAppVault")
         return FileManager.default.fileExists(atPath: vault.path) ? "ListAppVault" : "Not set"
@@ -27,7 +32,13 @@ struct SettingsView: View {
                 Button {
                     showFolderPicker = true
                 } label: {
-                    Label("Choose Folder…", systemImage: "folder.badge.plus")
+                    Label("Choose Local Folder…", systemImage: "folder.badge.plus")
+                }
+
+                Button {
+                    showCloudPicker = true
+                } label: {
+                    Label("Choose from iCloud Drive…", systemImage: "icloud")
                 }
 
                 if appState.isLoadingItems {
@@ -50,7 +61,7 @@ struct SettingsView: View {
             } header: {
                 Text("Vault")
             } footer: {
-                Text("Place your Obsidian vault or markdown folder at Documents/ListAppVault, or choose a folder. iCloud Drive integration coming soon.")
+                Text("Place your Obsidian vault or markdown folder at Documents/ListAppVault, choose a local folder, or pick any folder from iCloud Drive.")
             }
 
             // MARK: List Types (tappable)
@@ -108,6 +119,12 @@ struct SettingsView: View {
         .sheet(isPresented: $showFolderPicker) {
             FolderPickerView(vaultFolderName: $vaultFolderName)
                 .environment(appState)
+        }
+        .fileImporter(isPresented: $showCloudPicker, allowedContentTypes: [.folder]) { result in
+            if case .success(let url) = result {
+                appState.setVaultFromSecurityScopedURL(url)
+                vaultFolderName = url.lastPathComponent
+            }
         }
     }
 
@@ -193,7 +210,7 @@ struct FolderPickerView: View {
                 }
             }
             .navigationTitle("Choose Vault")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleInline()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

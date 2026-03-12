@@ -10,6 +10,9 @@ class AppState {
     var selectedTheme: String {
         didSet { UserDefaults.standard.set(selectedTheme, forKey: "selectedTheme") }
     }
+    var vaultDisplayName: String {
+        didSet { UserDefaults.standard.set(vaultDisplayName, forKey: "vaultDisplayName") }
+    }
 
     private let filterEngine = ItemFilterEngine()
     private let searchEngine = FullTextSearchEngine()
@@ -20,10 +23,30 @@ class AppState {
         // Initialize with mock data immediately to avoid blocking UI
         self.items = MockData.allItems
         self.selectedTheme = UserDefaults.standard.string(forKey: "selectedTheme") ?? "system"
+        self.vaultDisplayName = UserDefaults.standard.string(forKey: "vaultDisplayName") ?? "ListAppVault"
 
         // Load real files asynchronously in the background
         Task {
             await loadItemsFromVault()
+        }
+    }
+
+    /// Load from a security-scoped URL (iCloud Drive or external folder picker).
+    /// Saves a bookmark so the vault persists across launches.
+    func setVaultFromSecurityScopedURL(_ url: URL) {
+        let accessing = url.startAccessingSecurityScopedResource()
+
+        if let bookmarkData = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
+            UserDefaults.standard.set(bookmarkData, forKey: "vaultBookmarkData")
+        }
+
+        vaultDisplayName = url.lastPathComponent
+
+        Task {
+            await reloadItems(from: url)
+            if accessing {
+                url.stopAccessingSecurityScopedResource()
+            }
         }
     }
 
@@ -32,19 +55,7 @@ class AppState {
         isLoadingItems = true
         defer { isLoadingItems = false }
 
-        var loadedItems: [Item] = []
-        let coreFileSystem = DefaultFileSystemManager()
-        let todoParser = ObsidianTodoParser()
-
-        if case .success(let filePaths) = coreFileSystem.scanDirectory(at: vaultURL.path, recursive: true) {
-            for filePath in filePaths {
-                if case .success(let content) = coreFileSystem.readFile(at: filePath) {
-                    let parsedItems = todoParser.parseTodos(from: content, sourceFile: filePath)
-                    loadedItems.append(contentsOf: parsedItems)
-                }
-            }
-        }
-
+        let loadedItems = scanItems(at: vaultURL)
         if !loadedItems.isEmpty {
             self.items = loadedItems
         }
@@ -55,34 +66,45 @@ class AppState {
         isLoadingItems = true
         defer { isLoadingItems = false }
 
-        let documentsURL = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let vaultURL = documentsURL.appendingPathComponent("ListAppVault")
-
-        // Check if vault exists
-        guard FileManager.default.fileExists(atPath: vaultURL.path) else {
-            // No vault folder, keep using mock data
-            return
-        }
-
-        // Try to load real files asynchronously
-        var loadedItems: [Item] = []
-        let coreFileSystem = DefaultFileSystemManager()
-        let todoParser = ObsidianTodoParser()
-
-        if case .success(let filePaths) = coreFileSystem.scanDirectory(at: vaultURL.path, recursive: true) {
-            for filePath in filePaths {
-                if case .success(let content) = coreFileSystem.readFile(at: filePath) {
-                    let parsedItems = todoParser.parseTodos(from: content, sourceFile: filePath)
-                    loadedItems.append(contentsOf: parsedItems)
+        // Try to restore from a saved security-scoped bookmark first (iCloud Drive etc.)
+        if let bookmarkData = UserDefaults.standard.data(forKey: "vaultBookmarkData") {
+            var isStale = false
+            if let url = try? URL(resolvingBookmarkData: bookmarkData, options: [], relativeTo: nil, bookmarkDataIsStale: &isStale) {
+                let accessing = url.startAccessingSecurityScopedResource()
+                let loadedItems = scanItems(at: url)
+                if accessing { url.stopAccessingSecurityScopedResource() }
+                if !loadedItems.isEmpty {
+                    self.items = loadedItems
+                    return
                 }
             }
         }
 
-        // Update items if we found any
+        // Fall back to default Documents/ListAppVault
+        let documentsURL = FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let vaultURL = documentsURL.appendingPathComponent("ListAppVault")
+
+        guard FileManager.default.fileExists(atPath: vaultURL.path) else { return }
+
+        let loadedItems = scanItems(at: vaultURL)
         if !loadedItems.isEmpty {
             self.items = loadedItems
         }
+    }
+
+    private func scanItems(at url: URL) -> [Item] {
+        var loadedItems: [Item] = []
+        let coreFileSystem = DefaultFileSystemManager()
+        let todoParser = ObsidianTodoParser()
+        if case .success(let filePaths) = coreFileSystem.scanDirectory(at: url.path, recursive: true) {
+            for filePath in filePaths {
+                if case .success(let content) = coreFileSystem.readFile(at: filePath) {
+                    loadedItems.append(contentsOf: todoParser.parseTodos(from: content, sourceFile: filePath))
+                }
+            }
+        }
+        return loadedItems
     }
 
     // MARK: - Computed Properties
