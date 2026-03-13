@@ -1,6 +1,13 @@
 import SwiftUI
 import Core
 
+/// Navigation destination for ItemListView
+private struct ItemListViewDestination: Hashable {
+    let title: String
+    let items: [Item]
+    let displayStyle: DisplayStyle
+}
+
 struct ListTypeDetailView: View {
     @Environment(AppState.self) private var appState
     let listType: ListType
@@ -67,14 +74,14 @@ struct ListTypeDetailView: View {
             if !items.isEmpty {
                 Section("Items (\(items.count))") {
                     ForEach(items.prefix(5)) { item in
-                        NavigationLink(destination: ItemDetailView(item: item)) {
+                        NavigationLink(value: item) {
                             ItemRowView(item: item) {
                                 appState.toggleCompletion(for: item)
                             }
                         }
                     }
                     if items.count > 5 {
-                        NavigationLink(destination: ItemListView(
+                        NavigationLink(value: ItemListViewDestination(
                             title: listType.name.capitalized,
                             items: items,
                             displayStyle: .list
@@ -83,6 +90,12 @@ struct ListTypeDetailView: View {
                                 .foregroundStyle(Color.accentColor)
                         }
                     }
+                }
+                .navigationDestination(for: Item.self) { item in
+                    ItemDetailView(item: item)
+                }
+                .navigationDestination(for: ItemListViewDestination.self) { dest in
+                    ItemListView(title: dest.title, items: dest.items, displayStyle: dest.displayStyle)
                 }
             }
         }

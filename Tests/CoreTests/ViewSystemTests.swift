@@ -211,9 +211,9 @@ final class RelativeDateParserTests: XCTestCase {
             return
         }
 
-        let diff = result.timeIntervalSince(now)
-        let expectedDiff = 123 * 24 * 3600.0
-        XCTAssertEqual(diff, expectedDiff, accuracy: 1.0)
+        // Use calendar-aware comparison to handle DST transitions
+        let components = Calendar.current.dateComponents([.day], from: now, to: result)
+        XCTAssertEqual(components.day, 123)
     }
 }
 

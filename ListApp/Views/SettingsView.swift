@@ -4,7 +4,10 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
-    @State private var defaultDisplayStyle = DisplayStyle.list
+    @State private var defaultDisplayStyle: DisplayStyle = {
+        let rawValue = UserDefaults.standard.string(forKey: "defaultDisplayStyle") ?? "list"
+        return DisplayStyle(rawValue: rawValue) ?? .list
+    }()
     @State private var showFolderPicker = false
     @State private var showCloudPicker = false
     @State private var vaultFolderName: String = {
@@ -18,7 +21,7 @@ struct SettingsView: View {
     }()
 
     var body: some View {
-        Form {
+        List {
             // MARK: Vault / Folders
             Section {
                 HStack {
@@ -67,7 +70,7 @@ struct SettingsView: View {
             // MARK: List Types (tappable)
             Section("List Types") {
                 ForEach(appState.listTypes, id: \.name) { listType in
-                    NavigationLink(destination: ListTypeDetailView(listType: listType)) {
+                    NavigationLink(value: listType) {
                         HStack {
                             Image(systemName: iconForType(listType.name))
                                 .foregroundStyle(Color.accentColor)
@@ -94,6 +97,9 @@ struct SettingsView: View {
                     Label("List", systemImage: "list.bullet").tag(DisplayStyle.list)
                     Label("Card", systemImage: "square.grid.2x2").tag(DisplayStyle.card)
                 }
+                .onChange(of: defaultDisplayStyle) { oldValue, newValue in
+                    UserDefaults.standard.set(newValue.rawValue, forKey: "defaultDisplayStyle")
+                }
             }
 
             // MARK: About
@@ -114,6 +120,9 @@ struct SettingsView: View {
                     Text("\(appState.allTags.count)").foregroundStyle(.secondary)
                 }
             }
+        }
+        .navigationDestination(for: ListType.self) { listType in
+            ListTypeDetailView(listType: listType)
         }
         .navigationTitle("Settings")
         .sheet(isPresented: $showFolderPicker) {

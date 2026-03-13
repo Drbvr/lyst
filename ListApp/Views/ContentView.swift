@@ -1,6 +1,28 @@
 import SwiftUI
 import Core
 
+// MARK: - Platform Compatibility Helpers
+
+extension View {
+    @ViewBuilder
+    func navigationBarTitleInline() -> some View {
+        #if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func noAutocapitalization() -> some View {
+        #if os(iOS)
+        self.textInputAutocapitalization(.never)
+        #else
+        self
+        #endif
+    }
+}
+
 struct ContentView: View {
     @Environment(AppState.self) private var appState
 

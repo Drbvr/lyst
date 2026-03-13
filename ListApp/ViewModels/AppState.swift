@@ -160,6 +160,11 @@ class AppState {
 
     func deleteItem(_ item: Item) {
         items.removeAll { $0.id == item.id }
+
+        // Persist deletion to file asynchronously
+        Task {
+            _ = await fileSystemManager.deleteItem(item)
+        }
     }
 
     /// Update an item's properties in memory (title, tags, due date, priority, etc.)
@@ -168,6 +173,11 @@ class AppState {
             var updated = item
             updated.updatedAt = Date()
             items[index] = updated
+
+            // Persist changes to file asynchronously
+            Task {
+                _ = await fileSystemManager.writeItem(updated)
+            }
         }
     }
 

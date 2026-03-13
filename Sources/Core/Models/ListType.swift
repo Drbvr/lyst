@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a type of list with field definitions
-public struct ListType: Codable {
+public struct ListType: Codable, Hashable {
     public let name: String
     public var fields: [FieldDefinition]
     public var llmExtractionPrompt: String?
@@ -18,7 +18,7 @@ public struct ListType: Codable {
 }
 
 /// Represents a field definition in a ListType
-public struct FieldDefinition: Codable {
+public struct FieldDefinition: Codable, Hashable {
     public let name: String
     public let type: FieldType
     public let required: Bool

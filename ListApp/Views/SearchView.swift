@@ -32,7 +32,7 @@ struct SearchView: View {
             }
         }
         .searchable(text: $searchText, prompt: "Search items...")
-        .textInputAutocapitalization(.never)
+        .noAutocapitalization()
         .autocorrectionDisabled()
         .navigationTitle("Search")
     }
