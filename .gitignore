@@ -2,11 +2,13 @@
 .DS_Store
 /.build
 /Packages
-/*.xcodeproj
 xcuserdata/
 DerivedData/
 .swiftpm/
 *.xcworkspace
+
+# Local xcodebuild output
+/build/
 Package.resolved
 
 # Build products
