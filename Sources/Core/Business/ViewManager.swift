@@ -53,7 +53,7 @@ public class DefaultViewManager: ViewManager {
                         if let view = parseViewFromMarkdown(content) {
                             views.append(view)
                         }
-                    case .failure(let error):
+                    case .failure:
                         // Skip files that can't be read
                         continue
                     }

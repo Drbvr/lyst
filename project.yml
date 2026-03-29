@@ -67,5 +67,21 @@ targets:
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_STYLE: Automatic
-        PRODUCT_BUNDLE_IDENTIFIER: com.bart.ListApp
+        PRODUCT_BUNDLE_IDENTIFIER: com.bvanriessen.listapp
         ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: YES
+
+schemes:
+  ListApp:
+    build:
+      targets:
+        ListApp: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
