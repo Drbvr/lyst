@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0E8B5A39CC95ED426CACBCC4 /* ItemRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94175AF476086CA92FD0AFF0 /* ItemRowView.swift */; };
+		F0A1B2C3D4E5F6A7B8C9D0E1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F0A1B2C3D4E5F6A7B8C9D0E2 /* PrivacyInfo.xcprivacy */; };
 		0EE0040DE4363B0550809F99 /* FileScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138AC2A36890C0D54C73DFE3 /* FileScanner.swift */; };
 		2843008E6E334D1B89249268 /* FilterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA01D9EAC2BC3C7BCE23AA11 /* FilterEngine.swift */; };
 		296E886257BC6AED229A3AC8 /* TagBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75EEFDBB1A6FAE084203BA5A /* TagBrowserView.swift */; };
@@ -101,6 +102,7 @@
 		E8AE727A7993E82D1D7D7F89 /* ListTypeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListTypeDetailView.swift; sourceTree = "<group>"; };
 		EC6379FC2ABB5382BAC2211B /* PropertyValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyValue.swift; sourceTree = "<group>"; };
 		EE5569332D2CFE68404B4106 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
+		F0A1B2C3D4E5F6A7B8C9D0E2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = "file.xcprivacy"; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -178,6 +180,7 @@
 			isa = PBXGroup;
 			children = (
 				4F657F9AA6B823FEF528A0D5 /* ListApp.entitlements */,
+				F0A1B2C3D4E5F6A7B8C9D0E2 /* PrivacyInfo.xcprivacy */,
 				E2FFCB902C6F09396D3D7A74 /* App */,
 				355ED5C15E8B7718E0E7FCEB /* Components */,
 				581C6CCFFFC15B9DA7AACD5B /* Services */,
@@ -291,6 +294,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 87D46688277A10A998930E01 /* Build configuration list for PBXNativeTarget "ListApp" */;
 			buildPhases = (
+				F0A1B2C3D4E5F6A7B8C9D0E3 /* Resources */,
 				25D257CFA1E289910187E998 /* Sources */,
 				0BB9FD0C55DDE8BF869E99F2 /* Frameworks */,
 				E92EF7369BDAE93829D17420 /* Embed Frameworks */,
@@ -340,6 +344,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F0A1B2C3D4E5F6A7B8C9D0E3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F0A1B2C3D4E5F6A7B8C9D0E1 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		14553F33842D914E57B9A875 /* Sources */ = {
