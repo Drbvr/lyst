@@ -47,8 +47,6 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true
-        UIRequiredDeviceCapabilities:
-          - armv7
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
