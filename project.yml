@@ -44,6 +44,7 @@ targets:
         CFBundleDisplayName: Lyst
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true
         UIRequiredDeviceCapabilities:
           - armv7
