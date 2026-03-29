@@ -35,6 +35,7 @@ targets:
           - README.md
     resources:
       - ListApp/PrivacyInfo.xcprivacy
+      - ListApp/Assets.xcassets
     dependencies:
       - target: Core
         embed: true
@@ -46,8 +47,6 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true
-        UIRequiredDeviceCapabilities:
-          - armv7
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

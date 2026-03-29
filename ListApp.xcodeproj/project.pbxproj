@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0E8B5A39CC95ED426CACBCC4 /* ItemRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94175AF476086CA92FD0AFF0 /* ItemRowView.swift */; };
 		F0A1B2C3D4E5F6A7B8C9D0E1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F0A1B2C3D4E5F6A7B8C9D0E2 /* PrivacyInfo.xcprivacy */; };
+		F1A1B2C3D4E5F6A7B8C9D0E1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E5F6A7B8C9D0E2 /* Assets.xcassets */; };
 		0EE0040DE4363B0550809F99 /* FileScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138AC2A36890C0D54C73DFE3 /* FileScanner.swift */; };
 		2843008E6E334D1B89249268 /* FilterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA01D9EAC2BC3C7BCE23AA11 /* FilterEngine.swift */; };
 		296E886257BC6AED229A3AC8 /* TagBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75EEFDBB1A6FAE084203BA5A /* TagBrowserView.swift */; };
@@ -103,6 +104,7 @@
 		EC6379FC2ABB5382BAC2211B /* PropertyValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyValue.swift; sourceTree = "<group>"; };
 		EE5569332D2CFE68404B4106 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		F0A1B2C3D4E5F6A7B8C9D0E2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = "file.xcprivacy"; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F1A1B2C3D4E5F6A7B8C9D0E2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -181,6 +183,7 @@
 			children = (
 				4F657F9AA6B823FEF528A0D5 /* ListApp.entitlements */,
 				F0A1B2C3D4E5F6A7B8C9D0E2 /* PrivacyInfo.xcprivacy */,
+				F1A1B2C3D4E5F6A7B8C9D0E2 /* Assets.xcassets */,
 				E2FFCB902C6F09396D3D7A74 /* App */,
 				355ED5C15E8B7718E0E7FCEB /* Components */,
 				581C6CCFFFC15B9DA7AACD5B /* Services */,
@@ -351,6 +354,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F0A1B2C3D4E5F6A7B8C9D0E1 /* PrivacyInfo.xcprivacy in Resources */,
+				F1A1B2C3D4E5F6A7B8C9D0E1 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
