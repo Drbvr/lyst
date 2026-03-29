@@ -33,6 +33,8 @@ targets:
         excludes:
           - Info.plist
           - README.md
+    resources:
+      - ListApp/PrivacyInfo.xcprivacy
     dependencies:
       - target: Core
         embed: true
