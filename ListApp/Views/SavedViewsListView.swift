@@ -3,6 +3,7 @@ import Core
 
 struct SavedViewsListView: View {
     @Environment(AppState.self) private var appState
+    @State private var showAddSheet = false
 
     var body: some View {
         List {
@@ -34,8 +35,25 @@ struct SavedViewsListView: View {
                     }
                 }
             }
+            .onDelete { indexSet in
+                appState.savedViews.remove(atOffsets: indexSet)
+                appState.persistSavedViews()
+            }
         }
         .navigationTitle("Saved Views")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showAddSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showAddSheet) {
+            AddSavedViewSheet()
+                .environment(appState)
+        }
         .navigationDestination(for: SavedView.self) { savedView in
             ItemListView(
                 title: savedView.name,
