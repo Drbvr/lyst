@@ -36,7 +36,6 @@
   ```bash
   swift test
   ```
-  The same tests run automatically in GitHub Actions on every PR. The PR cannot be merged until they pass.
 - **Run the project-file verification script** before every push:
   ```bash
   bash scripts/verify-project-files.sh

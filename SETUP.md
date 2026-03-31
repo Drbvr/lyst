@@ -96,4 +96,4 @@ swift test --filter FilterEngineTests
 swift test --filter FilterEngineTests/testTagFilter
 ```
 
-Tests also run automatically on every PR via GitHub Actions (`Swift Tests` check). PRs cannot be merged until the check passes.
+Run tests locally before pushing — they are not run automatically in CI.
