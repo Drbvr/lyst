@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Core
+import Vision
 import UniformTypeIdentifiers
 
 // MARK: - Step state machine
@@ -142,12 +143,26 @@ final class ShareViewModel {
                 ["role": "user",   "content": userMessage],
             ]
         } else if let image = sharedImages.first {
-            processingStatus = "Preparing image…"
-            let userContent = buildImageMessageParts(image)
-            llmConversation = [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user",   "content": userContent],
-            ]
+            if settings.imageProcessingMode == .base64 {
+                processingStatus = "Preparing image…"
+                let userContent = buildImageMessageParts(image)
+                llmConversation = [
+                    ["role": "system", "content": systemPrompt],
+                    ["role": "user",   "content": userContent],
+                ]
+            } else {
+                processingStatus = "Reading image text…"
+                let ocrText = await extractText(from: image)
+                let userMessage = promptBuilder.buildUserMessage(
+                    content: ocrText,
+                    contentType: .image,
+                    additionalText: additionalText
+                )
+                llmConversation = [
+                    ["role": "system", "content": systemPrompt],
+                    ["role": "user",   "content": userMessage],
+                ]
+            }
         } else {
             step = .error("No shared content available.")
             return
@@ -398,7 +413,23 @@ final class ShareViewModel {
         }
     }
 
-    // MARK: - Image → multimodal message parts
+    // MARK: - Image processing
+
+    /// On-device OCR via Vision framework — returns extracted text.
+    private func extractText(from image: UIImage) async -> String {
+        guard let cgImage = image.cgImage else { return "" }
+        return await withCheckedContinuation { continuation in
+            let request = VNRecognizeTextRequest { request, _ in
+                let text = (request.results as? [VNRecognizedTextObservation] ?? [])
+                    .compactMap { $0.topCandidates(1).first?.string }
+                    .joined(separator: "\n")
+                continuation.resume(returning: text)
+            }
+            request.recognitionLevel = .accurate
+            let handler = VNImageRequestHandler(cgImage: cgImage)
+            try? handler.perform([request])
+        }
+    }
 
     /// Encodes a UIImage as a base64 JPEG data URI and returns the
     /// OpenAI-compatible multimodal content array for the user message.

@@ -13,6 +13,19 @@ public enum ProcessingMode: String, Codable, CaseIterable {
     }
 }
 
+/// How shared images are processed before being sent to the LLM.
+public enum ImageProcessingMode: String, Codable, CaseIterable {
+    case base64 = "base64"
+    case ocr    = "ocr"
+
+    public var displayName: String {
+        switch self {
+        case .base64: return "Send image directly (vision)"
+        case .ocr:    return "Extract text first (OCR)"
+        }
+    }
+}
+
 /// Persisted LLM configuration shared between the main app and the share extension
 /// via the App Group UserDefaults suite.
 public struct LLMSettings: Codable {
@@ -21,6 +34,7 @@ public struct LLMSettings: Codable {
     public static let vaultBookmarkKey = "sharedVaultBookmark"
 
     public var processingMode: ProcessingMode
+    public var imageProcessingMode: ImageProcessingMode
     public var baseURL: String
     public var model: String
     public var useThinking: Bool
@@ -28,16 +42,18 @@ public struct LLMSettings: Codable {
 
     public init(
         processingMode: ProcessingMode = .onDevice,
+        imageProcessingMode: ImageProcessingMode = .base64,
         baseURL: String = "",
         model: String = "",
         useThinking: Bool = false,
         apiKey: String = ""
     ) {
-        self.processingMode = processingMode
-        self.baseURL        = baseURL
-        self.model          = model
-        self.useThinking    = useThinking
-        self.apiKey         = apiKey
+        self.processingMode      = processingMode
+        self.imageProcessingMode = imageProcessingMode
+        self.baseURL             = baseURL
+        self.model               = model
+        self.useThinking         = useThinking
+        self.apiKey              = apiKey
     }
 
     /// Load from the shared App Group container, falling back to defaults.

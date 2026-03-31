@@ -48,6 +48,24 @@ struct LLMSettingsView: View {
                          "Lyst will wait up to 2 minutes for the server to start before giving up.")
                 }
 
+                Section {
+                    Picker("Image Input", selection: $settings.imageProcessingMode) {
+                        ForEach(ImageProcessingMode.allCases, id: \.self) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } header: {
+                    Text("Image Handling")
+                } footer: {
+                    switch settings.imageProcessingMode {
+                    case .base64:
+                        Text("The image is encoded and sent directly to the LLM. Requires a vision-capable model.")
+                    case .ocr:
+                        Text("Text is extracted from the image on-device first, then sent to the LLM as plain text.")
+                    }
+                }
+
                 Section("Connection") {
                     Button("Test Connection") {
                         Task { await testConnection() }
@@ -57,11 +75,12 @@ struct LLMSettingsView: View {
             }
         }
         .navigationTitle("AI Note Generation")
-        .onChange(of: settings.processingMode) { _, _ in settings.save() }
-        .onChange(of: settings.baseURL)        { _, _ in settings.save() }
-        .onChange(of: settings.model)          { _, _ in settings.save() }
-        .onChange(of: settings.apiKey)         { _, _ in settings.save() }
-        .onChange(of: settings.useThinking)    { _, _ in settings.save() }
+        .onChange(of: settings.processingMode)      { _, _ in settings.save() }
+        .onChange(of: settings.imageProcessingMode) { _, _ in settings.save() }
+        .onChange(of: settings.baseURL)             { _, _ in settings.save() }
+        .onChange(of: settings.model)               { _, _ in settings.save() }
+        .onChange(of: settings.apiKey)              { _, _ in settings.save() }
+        .onChange(of: settings.useThinking)         { _, _ in settings.save() }
         .alert(connectionAlertTitle, isPresented: $showConnectionAlert) {
             Button("OK", role: .cancel) {}
         } message: {
