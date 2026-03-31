@@ -27,6 +27,43 @@ struct FilterView: View {
         appState.filteredItems(with: currentFilters)
     }
 
+    /// Items matching only type + status (not tag filter), used to build the available-tags list.
+    private var typeStatusFilteredItems: [Item] {
+        let filters = ViewFilters(
+            tags: nil,
+            itemTypes: selectedTypes.isEmpty ? nil : Array(selectedTypes),
+            completed: completionFilter == .all ? nil : completionFilter == .completed
+        )
+        return appState.filteredItems(with: filters)
+    }
+
+    /// Tag groups derived from the type/status filtered items, so only relevant tags are shown.
+    private var availableTagGroups: [(tag: String, count: Int, children: [(tag: String, count: Int)])] {
+        let items = typeStatusFilteredItems
+        var groups: [String: Set<String>] = [:]
+        for item in items {
+            for tag in item.tags {
+                guard !tag.isEmpty else { continue }
+                let topLevel = String(tag.split(separator: "/").first ?? Substring(tag))
+                groups[topLevel, default: Set()].insert(tag)
+            }
+        }
+        return groups.keys.sorted().map { topLevel in
+            let allTagsForGroup = groups[topLevel] ?? Set()
+            let children = allTagsForGroup
+                .filter { $0.contains("/") }
+                .sorted()
+                .map { childTag in
+                    let count = items.filter { $0.tags.contains(childTag) }.count
+                    return (tag: childTag, count: count)
+                }
+            let totalCount = items.filter { item in
+                item.tags.contains { $0.hasPrefix(topLevel) }
+            }.count
+            return (tag: topLevel, count: totalCount, children: children)
+        }
+    }
+
     private var hasActiveFilters: Bool {
         !selectedTags.isEmpty || !selectedTypes.isEmpty || completionFilter != .all
     }
@@ -85,7 +122,7 @@ struct FilterView: View {
                     // ── TAGS ──────────────────────────────────────────────
                     filterSectionHeader("Tags")
 
-                    if appState.tagGroups.isEmpty {
+                    if availableTagGroups.isEmpty {
                         Text("No tags found")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -93,7 +130,7 @@ struct FilterView: View {
                             .padding(.bottom, 12)
                     } else {
                         VStack(spacing: 0) {
-                            ForEach(appState.tagGroups, id: \.tag) { group in
+                            ForEach(availableTagGroups, id: \.tag) { group in
                                 tagGroupRow(group)
                             }
                         }

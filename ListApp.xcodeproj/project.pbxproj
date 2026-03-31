@@ -42,6 +42,25 @@
 		E3A501279DBF216F1B8C690F /* RelativeDateParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91FC7B866049A9B142681E7 /* RelativeDateParser.swift */; };
 		E47F71FBBC26FE36C2DD69F5 /* FilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB498DDCA1C1EE644701623 /* FilterView.swift */; };
 		F11C81EAB1754AE3D369F5AD /* ListType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A15E08B8474900A5995A64F /* ListType.swift */; };
+
+		BB01000000000000000001BB /* LLMSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000001AA /* LLMSettings.swift */; };
+		BB01000000000000000002BB /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000002AA /* LLMService.swift */; };
+		BB01000000000000000003BB /* PromptBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000003AA /* PromptBuilder.swift */; };
+		BB01000000000000000004BB /* NoteResponseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000004AA /* NoteResponseParser.swift */; };
+		BB01000000000000000005BB /* WebContentFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000005AA /* WebContentFetcher.swift */; };
+		BB01000000000000000006BB /* LLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000007AA /* LLMSettingsView.swift */; };
+		BB01000000000000000011BB /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000011AA /* ShareViewController.swift */; };
+		BB01000000000000000012BB /* ShareRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000012AA /* ShareRootView.swift */; };
+		BB01000000000000000013BB /* ShareViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000013AA /* ShareViewModel.swift */; };
+		BB01000000000000000014BB /* AIDecisionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000014AA /* AIDecisionView.swift */; };
+		BB01000000000000000015BB /* AIProcessingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000015AA /* AIProcessingView.swift */; };
+		BB01000000000000000016BB /* NotePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000016AA /* NotePreviewView.swift */; };
+		BB01000000000000000017BB /* ManualNoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000017AA /* ManualNoteView.swift */; };
+		BB01000000000000000020BB /* Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 26722153A1EE1CEC3628BD83 /* Core.framework */; };
+		BB01000000000000000021BB /* LystShareExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AA01000000000000000010AA /* LystShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+
+		CC10000000000000000001CC /* CreateItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC10000000000000000001CC /* CreateItemView.swift */; };
+		CC10000000000000000002CC /* AddSavedViewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC10000000000000000002CC /* AddSavedViewSheet.swift */; };
 		AA01BB02CC03DD04EE05FF07 /* AddSavedViewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01BB02CC03DD04EE05FF06 /* AddSavedViewSheet.swift */; };
 		BB11CC22DD33EE44FF55AA77 /* CreateItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF55AA66 /* CreateItemView.swift */; };
 /* End PBXBuildFile section */
@@ -53,6 +72,14 @@
 			proxyType = 1;
 			remoteGlobalIDString = 168EA85B830D619984958749;
 			remoteInfo = Core;
+		};
+
+		EE01000000000000000001EE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0996159BE300823BF4730A1D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DD01000000000000000001DD;
+			remoteInfo = LystShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -66,6 +93,18 @@
 				DA49585D50E5D3BA42E6D74C /* Core.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		CC01000000000000000003CC /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BB01000000000000000021BB /* LystShareExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -109,6 +148,25 @@
 		EE5569332D2CFE68404B4106 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		F0A1B2C3D4E5F6A7B8C9D0E2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = "file.xcprivacy"; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F1A1B2C3D4E5F6A7B8C9D0E2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+
+		AA01000000000000000001AA /* LLMSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMSettings.swift; sourceTree = "<group>"; };
+		AA01000000000000000002AA /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
+		AA01000000000000000003AA /* PromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBuilder.swift; sourceTree = "<group>"; };
+		AA01000000000000000004AA /* NoteResponseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteResponseParser.swift; sourceTree = "<group>"; };
+		AA01000000000000000005AA /* WebContentFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebContentFetcher.swift; sourceTree = "<group>"; };
+		AA01000000000000000007AA /* LLMSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMSettingsView.swift; sourceTree = "<group>"; };
+		AA01000000000000000010AA /* LystShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LystShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA01000000000000000011AA /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		AA01000000000000000012AA /* ShareRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareRootView.swift; sourceTree = "<group>"; };
+		AA01000000000000000013AA /* ShareViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewModel.swift; sourceTree = "<group>"; };
+		AA01000000000000000014AA /* AIDecisionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIDecisionView.swift; sourceTree = "<group>"; };
+		AA01000000000000000015AA /* AIProcessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProcessingView.swift; sourceTree = "<group>"; };
+		AA01000000000000000016AA /* NotePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotePreviewView.swift; sourceTree = "<group>"; };
+		AA01000000000000000017AA /* ManualNoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualNoteView.swift; sourceTree = "<group>"; };
+		AA01000000000000000018AA /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+
+		CC10000000000000000001CC /* CreateItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateItemView.swift; sourceTree = "<group>"; };
+		CC10000000000000000002CC /* AddSavedViewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSavedViewSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -117,6 +175,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				AD3F84894508DC5042E8F332 /* Core.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		CC01000000000000000002CC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB01000000000000000020BB /* Core.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -136,6 +203,7 @@
 			children = (
 				26722153A1EE1CEC3628BD83 /* Core.framework */,
 				5D032F11B032D1244BA1FD6B /* ListApp.app */,
+				AA01000000000000000010AA /* LystShareExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -180,6 +248,9 @@
 				7C82E15D47A01CCAFE3C636D /* SearchView.swift */,
 				9C6090889E5BD439B99D1145 /* SettingsView.swift */,
 				75EEFDBB1A6FAE084203BA5A /* TagBrowserView.swift */,
+				AA01000000000000000007AA /* LLMSettingsView.swift */,
+				CC10000000000000000001CC /* CreateItemView.swift */,
+				CC10000000000000000002CC /* AddSavedViewSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -206,6 +277,7 @@
 				7A15E08B8474900A5995A64F /* ListType.swift */,
 				EC6379FC2ABB5382BAC2211B /* PropertyValue.swift */,
 				12767BBCE418EF54AEFDCB6E /* View.swift */,
+				AA01000000000000000001AA /* LLMSettings.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -223,6 +295,7 @@
 			children = (
 				4E4BDFF226784BDA92D26FA3 /* ListApp */,
 				35E1ECCC1AB9F28DA34EC3B2 /* Sources */,
+				AA01000000000000000020AA /* ShareExtension */,
 				0B7B8D79729BFA3F9B6380C7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -258,6 +331,7 @@
 				F0EDD9BDEFB3A1CE3F986B58 /* FileSystem */,
 				52A9481823D6DFA83A67A6DD /* Models */,
 				A1157D925BF2A1FA2653ABAA /* Parsers */,
+				AA01000000000000000006AA /* Services */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -277,6 +351,41 @@
 				173C171118937FC122082954 /* FileSystemManager.swift */,
 			);
 			path = FileSystem;
+			sourceTree = "<group>";
+		};
+
+		AA01000000000000000006AA /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AA01000000000000000002AA /* LLMService.swift */,
+				AA01000000000000000003AA /* PromptBuilder.swift */,
+				AA01000000000000000004AA /* NoteResponseParser.swift */,
+				AA01000000000000000005AA /* WebContentFetcher.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		AA01000000000000000021AA /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				AA01000000000000000014AA /* AIDecisionView.swift */,
+				AA01000000000000000015AA /* AIProcessingView.swift */,
+				AA01000000000000000017AA /* ManualNoteView.swift */,
+				AA01000000000000000016AA /* NotePreviewView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		AA01000000000000000020AA /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				AA01000000000000000018AA /* ShareExtension.entitlements */,
+				AA01000000000000000011AA /* ShareViewController.swift */,
+				AA01000000000000000012AA /* ShareRootView.swift */,
+				AA01000000000000000013AA /* ShareViewModel.swift */,
+				AA01000000000000000021AA /* Views */,
+			);
+			path = ShareExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -307,11 +416,13 @@
 				25D257CFA1E289910187E998 /* Sources */,
 				0BB9FD0C55DDE8BF869E99F2 /* Frameworks */,
 				E92EF7369BDAE93829D17420 /* Embed Frameworks */,
+				CC01000000000000000003CC /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				B647FCD349FA34DDC8BC4D69 /* PBXTargetDependency */,
+				EE01000000000000000002EE /* PBXTargetDependency */,
 			);
 			name = ListApp;
 			packageProductDependencies = (
@@ -319,6 +430,25 @@
 			productName = ListApp;
 			productReference = 5D032F11B032D1244BA1FD6B /* ListApp.app */;
 			productType = "com.apple.product-type.application";
+		};
+
+		DD01000000000000000001DD /* LystShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF01000000000000000003FF /* Build configuration list for PBXNativeTarget "LystShareExtension" */;
+			buildPhases = (
+				CC01000000000000000001CC /* Sources */,
+				CC01000000000000000002CC /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LystShareExtension;
+			packageProductDependencies = (
+			);
+			productName = LystShareExtension;
+			productReference = AA01000000000000000010AA /* LystShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -350,6 +480,7 @@
 			targets = (
 				168EA85B830D619984958749 /* Core */,
 				662DC415FB361D2C7A869B8D /* ListApp */,
+				DD01000000000000000001DD /* LystShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -387,6 +518,11 @@
 				B01B181C0A0A60AEC46976F5 /* View.swift in Sources */,
 				371C283C9DDF49FB09357780 /* ViewManager.swift in Sources */,
 				68B24A985CE906D46AFF565E /* YAMLParser.swift in Sources */,
+				BB01000000000000000001BB /* LLMSettings.swift in Sources */,
+				BB01000000000000000002BB /* LLMService.swift in Sources */,
+				BB01000000000000000003BB /* PromptBuilder.swift in Sources */,
+				BB01000000000000000004BB /* NoteResponseParser.swift in Sources */,
+				BB01000000000000000005BB /* WebContentFetcher.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -411,6 +547,24 @@
 				836341284186D95A587A04AA /* SettingsView.swift in Sources */,
 				296E886257BC6AED229A3AC8 /* TagBrowserView.swift in Sources */,
 				98D1C9BE60144E02CAB2B1ED /* TagChipView.swift in Sources */,
+				BB01000000000000000006BB /* LLMSettingsView.swift in Sources */,
+				CC10000000000000000001CC /* CreateItemView.swift in Sources */,
+				CC10000000000000000002CC /* AddSavedViewSheet.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		CC01000000000000000001CC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB01000000000000000011BB /* ShareViewController.swift in Sources */,
+				BB01000000000000000012BB /* ShareRootView.swift in Sources */,
+				BB01000000000000000013BB /* ShareViewModel.swift in Sources */,
+				BB01000000000000000014BB /* AIDecisionView.swift in Sources */,
+				BB01000000000000000015BB /* AIProcessingView.swift in Sources */,
+				BB01000000000000000016BB /* NotePreviewView.swift in Sources */,
+				BB01000000000000000017BB /* ManualNoteView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -421,6 +575,12 @@
 			isa = PBXTargetDependency;
 			target = 168EA85B830D619984958749 /* Core */;
 			targetProxy = EDCF1072AA9568A2FD77A4C2 /* PBXContainerItemProxy */;
+		};
+
+		EE01000000000000000002EE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DD01000000000000000001DD /* LystShareExtension */;
+			targetProxy = EE01000000000000000001EE /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -644,6 +804,55 @@
 			};
 			name = Debug;
 		};
+
+		FF01000000000000000001FF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bvanriessen.listapp.ShareExtension;
+				PRODUCT_NAME = LystShareExtension;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FF01000000000000000002FF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Distribution";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bvanriessen.listapp.ShareExtension;
+				PRODUCT_NAME = LystShareExtension;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -670,6 +879,16 @@
 			buildConfigurations = (
 				CEAB8A2D5A8B510BCA69C6CD /* Debug */,
 				AEC371D662A8411836104285 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+
+		FF01000000000000000003FF /* Build configuration list for PBXNativeTarget "LystShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FF01000000000000000001FF /* Debug */,
+				FF01000000000000000002FF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

@@ -60,6 +60,7 @@ struct CreateItemView: View {
                                 .font(.caption.bold())
                                 .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -171,11 +172,26 @@ private struct FieldsFormView: View {
     private func fieldInput(for field: FieldDefinition) -> some View {
         switch field.type {
         case .text:
+            // Priority gets a segmented picker matching the edit form
+            if field.name.lowercased() == "priority" {
+                let binding = Binding<String>(
+                    get: { textValues[field.name] ?? "" },
+                    set: { textValues[field.name] = $0 }
+                )
+                Picker("Priority", selection: binding) {
+                    Text("None").tag("")
+                    Text("🔴 High").tag("high")
+                    Text("🟠 Medium").tag("medium")
+                    Text("🔵 Low").tag("low")
+                }
+                .pickerStyle(.segmented)
+            } else {
             TextField(field.required ? "Required" : "Optional",
                       text: Binding(
                         get: { textValues[field.name] ?? "" },
                         set: { textValues[field.name] = $0 }
                       ))
+            }
 
         case .number:
             TextField(field.required ? "Required" : "Optional",

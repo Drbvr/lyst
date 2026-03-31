@@ -102,6 +102,15 @@ struct SettingsView: View {
                 }
             }
 
+            // MARK: AI Note Generation
+            Section("AI Note Generation") {
+                NavigationLink {
+                    LLMSettingsView()
+                } label: {
+                    Label("AI Note Generation", systemImage: "sparkles")
+                }
+            }
+
             // MARK: About
             Section("About") {
                 HStack {
