@@ -14,6 +14,9 @@ class AppState {
     var vaultDisplayName: String {
         didSet { UserDefaults.standard.set(vaultDisplayName, forKey: "vaultDisplayName") }
     }
+    var llmSettings: LLMSettings {
+        didSet { llmSettings.save() }
+    }
 
     private let filterEngine = ItemFilterEngine()
     private let searchEngine = FullTextSearchEngine()
@@ -26,6 +29,7 @@ class AppState {
         self.savedViews = Self.loadPersistedSavedViews() ?? MockData.savedViews
         self.selectedTheme = UserDefaults.standard.string(forKey: "selectedTheme") ?? "system"
         self.vaultDisplayName = UserDefaults.standard.string(forKey: "vaultDisplayName") ?? "ListAppVault"
+        self.llmSettings = LLMSettings.load()
 
         // Load real files asynchronously in the background
         Task {
@@ -40,6 +44,9 @@ class AppState {
 
         if let bookmarkData = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
             UserDefaults.standard.set(bookmarkData, forKey: "vaultBookmarkData")
+            // Share bookmark with the extension via App Group container
+            UserDefaults(suiteName: LLMSettings.appGroupID)?
+                .set(bookmarkData, forKey: LLMSettings.vaultBookmarkKey)
         }
 
         vaultDisplayName = url.lastPathComponent

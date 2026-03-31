@@ -18,29 +18,32 @@ struct ItemListView: View {
             } else {
                 List {
                     ForEach(items) { item in
-                        NavigationLink(value: item) {
-                            ItemRowView(item: item) {
-                                appState.toggleCompletion(for: item)
+                        // Always resolve the latest state from appState so completion
+                        // changes made in ItemDetailView are reflected when popping back.
+                        let current = appState.items.first(where: { $0.id == item.id }) ?? item
+                        NavigationLink(value: current) {
+                            ItemRowView(item: current) {
+                                appState.toggleCompletion(for: current)
                             }
                         }
                         .swipeActions(edge: .leading) {
-                            if item.type == "todo" {
+                            if current.type == "todo" {
                                 Button {
-                                    appState.toggleCompletion(for: item)
+                                    appState.toggleCompletion(for: current)
                                 } label: {
                                     Label(
-                                        item.completed ? "Undo" : "Done",
-                                        systemImage: item.completed
+                                        current.completed ? "Undo" : "Done",
+                                        systemImage: current.completed
                                             ? "arrow.uturn.backward"
                                             : "checkmark"
                                     )
                                 }
-                                .tint(item.completed ? .orange : .green)
+                                .tint(current.completed ? .orange : .green)
                             }
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
-                                appState.deleteItem(item)
+                                appState.deleteItem(current)
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
