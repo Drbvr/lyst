@@ -42,6 +42,8 @@
 		E3A501279DBF216F1B8C690F /* RelativeDateParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91FC7B866049A9B142681E7 /* RelativeDateParser.swift */; };
 		E47F71FBBC26FE36C2DD69F5 /* FilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB498DDCA1C1EE644701623 /* FilterView.swift */; };
 		F11C81EAB1754AE3D369F5AD /* ListType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A15E08B8474900A5995A64F /* ListType.swift */; };
+		AA01BB02CC03DD04EE05FF07 /* AddSavedViewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01BB02CC03DD04EE05FF06 /* AddSavedViewSheet.swift */; };
+		BB11CC22DD33EE44FF55AA77 /* CreateItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF55AA66 /* CreateItemView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +76,8 @@
 		14799CC08A598F22E5E188E7 /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
 		173C171118937FC122082954 /* FileSystemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemManager.swift; sourceTree = "<group>"; };
 		1CB498DDCA1C1EE644701623 /* FilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterView.swift; sourceTree = "<group>"; };
+		AA01BB02CC03DD04EE05FF06 /* AddSavedViewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSavedViewSheet.swift; sourceTree = "<group>"; };
+		BB11CC22DD33EE44FF55AA66 /* CreateItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateItemView.swift; sourceTree = "<group>"; };
 		26722153A1EE1CEC3628BD83 /* Core.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Core.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F03BAA307C6CA3791752845 /* FileSystemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemManager.swift; sourceTree = "<group>"; };
 		37447FAA81C2A4AB8781A5FC /* SavedViewsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedViewsListView.swift; sourceTree = "<group>"; };
@@ -165,7 +169,9 @@
 		4A01A5F50FCD05C14F6D4F62 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				AA01BB02CC03DD04EE05FF06 /* AddSavedViewSheet.swift */,
 				4D64EA52A4DCB2A9BEBD0EFB /* ContentView.swift */,
+				BB11CC22DD33EE44FF55AA66 /* CreateItemView.swift */,
 				1CB498DDCA1C1EE644701623 /* FilterView.swift */,
 				14799CC08A598F22E5E188E7 /* ItemDetailView.swift */,
 				86DDB9DC68CB58B639242F91 /* ItemListView.swift */,
@@ -388,7 +394,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA01BB02CC03DD04EE05FF07 /* AddSavedViewSheet.swift in Sources */,
 				AF3AC56725BCE48A7FF84094 /* AppState.swift in Sources */,
+				BB11CC22DD33EE44FF55AA77 /* CreateItemView.swift in Sources */,
 				35FC505CFB01ABF7988FFBE7 /* ContentView.swift in Sources */,
 				839A75AEBC4C728B05D0C912 /* FileSystemManager.swift in Sources */,
 				E47F71FBBC26FE36C2DD69F5 /* FilterView.swift in Sources */,
