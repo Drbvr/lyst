@@ -1,0 +1,24 @@
+name: Verify Project Files
+
+# Runs on every PR targeting main, and on direct pushes to main.
+# Catches Swift files that exist on disk but are not registered in
+# project.pbxproj, which causes "Cannot find X in scope" build errors
+# in Xcode Cloud. This check is fast (no Xcode required).
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  verify-project-files:
+    name: All Swift files registered in project.pbxproj
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run verification script
+        run: bash scripts/verify-project-files.sh
