@@ -23,6 +23,17 @@
 - **Bundle related fixes into a single feature branch and PR.** Don't open one PR per tiny fix.
 - If bugs are logically unrelated, use separate branches/PRs.
 
+### Before pushing / opening a PR
+- **Run the project-file verification script** before every push:
+  ```bash
+  bash scripts/verify-project-files.sh
+  ```
+  This catches Swift files that exist on disk but are missing from `project.pbxproj`,
+  which causes "Cannot find X in scope" errors in Xcode Cloud. Any new `.swift` file
+  added to `ListApp/` **must** also be registered in the Xcode project.
+- The same check runs automatically via GitHub Actions on every PR targeting `main`.
+  The PR cannot be merged until this check passes.
+
 ### Pushing and PRs
 - Always push with: `git push -u origin <branch-name>`
 - **Never push directly to `main`** — always use a feature branch + PR.
