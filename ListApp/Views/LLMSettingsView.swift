@@ -26,15 +26,17 @@ struct LLMSettingsView: View {
                     LabeledContent("Base URL") {
                         TextField("http://192.168.1.1:8000", text: $settings.baseURL)
                             .multilineTextAlignment(.trailing)
+                            #if os(iOS)
                             .keyboardType(.URL)
+                            #endif
                             .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
+                            .noAutocapitalization()
                     }
                     LabeledContent("Model") {
                         TextField("e.g. qwen3-14b", text: $settings.model)
                             .multilineTextAlignment(.trailing)
                             .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
+                            .noAutocapitalization()
                     }
                     LabeledContent("API Key") {
                         SecureField("Optional", text: $settings.apiKey)
@@ -44,8 +46,7 @@ struct LLMSettingsView: View {
                 } header: {
                     Text("Server Configuration")
                 } footer: {
-                    Text("The server must expose an OpenAI-compatible /v1/chat/completions endpoint. " +
-                         "Lyst will wait up to 2 minutes for the server to start before giving up.")
+                    Text("The server must expose an OpenAI-compatible /v1/chat/completions endpoint. Lyst will wait up to 2 minutes for the server to start before giving up.")
                 }
 
                 Section {

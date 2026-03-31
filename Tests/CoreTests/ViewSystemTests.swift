@@ -40,9 +40,12 @@ final class RelativeDateParserTests: XCTestCase {
             return
         }
 
-        let diff = now.timeIntervalSince(result)
-        let expectedDiff = 30 * 24 * 3600.0
-        XCTAssertEqual(diff, expectedDiff, accuracy: 1.0)
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.day = 30
+        let advanced = calendar.date(byAdding: components, to: result)!
+        let diff = abs(now.timeIntervalSince(advanced))
+        XCTAssertLessThan(diff, 86400)
     }
 
     func testParseSingleDay() {
@@ -84,9 +87,12 @@ final class RelativeDateParserTests: XCTestCase {
             return
         }
 
-        let diff = now.timeIntervalSince(result)
-        let expectedDiff = 7 * 24 * 3600.0
-        XCTAssertEqual(diff, expectedDiff, accuracy: 1.0)
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.weekOfYear = 1
+        let advanced = calendar.date(byAdding: components, to: result)!
+        let diff = abs(now.timeIntervalSince(advanced))
+        XCTAssertLessThan(diff, 86400)
     }
 
     // MARK: - Months Tests

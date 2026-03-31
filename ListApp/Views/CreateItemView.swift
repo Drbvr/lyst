@@ -199,7 +199,9 @@ private struct FieldsFormView: View {
                         get: { numberValues[field.name] ?? "" },
                         set: { numberValues[field.name] = $0 }
                       ))
+            #if os(iOS)
             .keyboardType(.decimalPad)
+            #endif
 
         case .date:
             let isOn = Binding(
