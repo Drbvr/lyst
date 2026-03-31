@@ -17,6 +17,22 @@ struct ListAppApp: App {
             ContentView()
                 .environment(appState)
                 .preferredColorScheme(preferredColorScheme)
+                .onOpenURL { url in
+                    if url.scheme == "lyst" {
+                        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                              let webURLString = components.queryItems?.first(where: { $0.name == "url" })?.value,
+                              let webURL = URL(string: webURLString) else { return }
+                        appState.pendingImport = .webURL(webURL)
+                    } else if url.isFileURL {
+                        appState.pendingImport = .image(url)
+                    } else if url.scheme == "https" || url.scheme == "http" {
+                        appState.pendingImport = .webURL(url)
+                    }
+                }
+                .sheet(item: Bindable(appState).pendingImport) { pending in
+                    ImportView(pending: pending)
+                        .environment(appState)
+                }
         }
     }
 }

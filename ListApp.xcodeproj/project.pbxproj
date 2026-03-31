@@ -17,6 +17,7 @@
 		371C283C9DDF49FB09357780 /* ViewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7569AB676721CE355FB7DFFA /* ViewManager.swift */; };
 		4B6B0A407BF82312A7E37934 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE5569332D2CFE68404B4106 /* FlowLayout.swift */; };
 		51501F1C07344D6813CB09F9 /* CreateItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86CEE3788126F5D3AEB60FAB /* CreateItemView.swift */; };
+		8A570C6891F540D980613AF7 /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8C9E44477F74680A2CF1373 /* ImportView.swift */; };
 		5567DB104A3FBE0FC565A0B0 /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D6D94061325CF1B939E286 /* SearchEngine.swift */; };
 		6515008C2767CC1B95D988C5 /* FileSystemManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 173C171118937FC122082954 /* FileSystemManager.swift */; };
 		68B24A985CE906D46AFF565E /* YAMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77DFEFB07011F2A98AAF8924 /* YAMLParser.swift */; };
@@ -110,6 +111,7 @@
 		8538CAF531748EA646484D9A /* MarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownParser.swift; sourceTree = "<group>"; };
 		85A84474E907996DE82622CA /* PromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBuilder.swift; sourceTree = "<group>"; };
 		86CEE3788126F5D3AEB60FAB /* CreateItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateItemView.swift; sourceTree = "<group>"; };
+		D8C9E44477F74680A2CF1373 /* ImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportView.swift; sourceTree = "<group>"; };
 		86DDB9DC68CB58B639242F91 /* ItemListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemListView.swift; sourceTree = "<group>"; };
 		926ECAC1EABA626C9BDC6520 /* TagHierarchy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagHierarchy.swift; sourceTree = "<group>"; };
 		94175AF476086CA92FD0AFF0 /* ItemRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemRowView.swift; sourceTree = "<group>"; };
@@ -202,6 +204,7 @@
 				A76AB45A9DA3B25D8602FBB1 /* AddSavedViewSheet.swift */,
 				4D64EA52A4DCB2A9BEBD0EFB /* ContentView.swift */,
 				86CEE3788126F5D3AEB60FAB /* CreateItemView.swift */,
+				D8C9E44477F74680A2CF1373 /* ImportView.swift */,
 				1CB498DDCA1C1EE644701623 /* FilterView.swift */,
 				14799CC08A598F22E5E188E7 /* ItemDetailView.swift */,
 				86DDB9DC68CB58B639242F91 /* ItemListView.swift */,
@@ -436,6 +439,7 @@
 				AF3AC56725BCE48A7FF84094 /* AppState.swift in Sources */,
 				35FC505CFB01ABF7988FFBE7 /* ContentView.swift in Sources */,
 				51501F1C07344D6813CB09F9 /* CreateItemView.swift in Sources */,
+				8A570C6891F540D980613AF7 /* ImportView.swift in Sources */,
 				839A75AEBC4C728B05D0C912 /* FileSystemManager.swift in Sources */,
 				E47F71FBBC26FE36C2DD69F5 /* FilterView.swift in Sources */,
 				4B6B0A407BF82312A7E37934 /* FlowLayout.swift in Sources */,

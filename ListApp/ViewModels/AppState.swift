@@ -1,6 +1,22 @@
 import SwiftUI
 import Core
 
+// MARK: - Pending Import
+
+enum PendingImport: Identifiable {
+    case image(URL)
+    case webURL(URL)
+
+    var id: String {
+        switch self {
+        case .image(let url):  return "image:" + url.absoluteString
+        case .webURL(let url): return "url:" + url.absoluteString
+        }
+    }
+}
+
+// MARK: - AppState
+
 @Observable
 class AppState {
     var items: [Item]
@@ -17,6 +33,7 @@ class AppState {
     var llmSettings: LLMSettings {
         didSet { llmSettings.save() }
     }
+    var pendingImport: PendingImport? = nil
 
     private let filterEngine = ItemFilterEngine()
     private let searchEngine = FullTextSearchEngine()
