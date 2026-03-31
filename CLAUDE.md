@@ -4,16 +4,24 @@
 
 ### Before creating any branch
 1. **Always `git fetch origin` first** — never skip this step.
-2. **Verify the branch doesn't already exist remotely:**
+2. **Check what branches are already merged — these must never be reused:**
+   ```bash
+   git branch -r --merged origin/main
+   ```
+   Any branch appearing here is already merged. Creating or pushing to it produces a
+   stale / diverged branch and is a recurring source of bugs. Choose a new name.
+3. **Verify the new branch name doesn't already exist remotely:**
    ```bash
    git branch -r | grep <branch-name>
    ```
-   Never reuse a branch that already exists on the remote — it may already be merged or stale.
-3. **Branch off latest `main`:**
+4. **Branch off latest `main`:**
    ```bash
    git checkout main && git pull origin main
    git checkout -b fix/<short-description>    # or feat/<short-description>
    ```
+
+> **Automated guard:** `.githooks/pre-push` blocks pushes to any branch already merged
+> into `origin/main`. Run `bash scripts/setup-hooks.sh` once after cloning to activate.
 
 ### Committing
 - Commit per logical unit (one commit per bug fix or feature is fine within a branch).
@@ -45,6 +53,12 @@
 | Bug fixes | `fix/<short-description>` |
 | New features | `feat/<short-description>` |
 | Hotfixes | `hotfix/<short-description>` |
+
+## First-time Setup (after cloning)
+
+```bash
+bash scripts/setup-hooks.sh   # installs the pre-push merged-branch guard
+```
 
 ## Project Structure
 - `ListApp/` — iOS app (SwiftUI, @Observable)
