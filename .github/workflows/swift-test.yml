@@ -1,0 +1,22 @@
+name: Swift Tests
+
+# Runs on every PR targeting main, and on direct pushes to main.
+# Executes all CoreTests via Swift Package Manager.
+# PRs cannot be merged until this check passes.
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: CoreTests
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: swift test

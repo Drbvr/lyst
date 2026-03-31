@@ -32,6 +32,11 @@
 - If bugs are logically unrelated, use separate branches/PRs.
 
 ### Before pushing / opening a PR
+- **Run Swift tests** before pushing:
+  ```bash
+  swift test
+  ```
+  The same tests run automatically in GitHub Actions on every PR. The PR cannot be merged until they pass.
 - **Run the project-file verification script** before every push:
   ```bash
   bash scripts/verify-project-files.sh
@@ -59,6 +64,21 @@
 ```bash
 bash scripts/setup-hooks.sh   # installs the pre-push merged-branch guard
 ```
+
+## Adding a New Target or App Extension
+
+> **Before writing any code**, complete the Apple Developer Portal steps in `SETUP.md → Adding a New Extension or Target`. Xcode Cloud cannot sign or export a target whose App ID is not registered in the portal.
+
+Code-side checklist:
+- Set `DEVELOPMENT_TEAM = S43L28SVX2;` in the new target's **Debug and Release** build configs in `project.pbxproj`
+- Add a `.entitlements` file if the extension shares data via App Groups
+- Register all new `.swift` source files in `project.pbxproj` (same rule as existing targets — run `bash scripts/verify-project-files.sh` to verify)
+
+## Xcode Cloud & App Store Connect
+
+Xcode Cloud workflow settings — App Store Connect credentials, TestFlight post-action, and distribution methods — are configured in **App Store Connect → Xcode Cloud → Workflows**, not in the codebase. See `SETUP.md → Xcode Cloud Workflow Configuration` for required settings.
+
+If a build fails with "Preparing build for App Store Connect failed", the TestFlight post-action is missing App Store Connect credentials (a portal-only fix).
 
 ## Project Structure
 - `ListApp/` — iOS app (SwiftUI, @Observable)
