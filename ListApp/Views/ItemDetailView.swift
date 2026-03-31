@@ -415,6 +415,15 @@ private struct MetadataSection: View {
                     Text(item.createdAt, style: .date)
                 }
                 .padding(.horizontal).padding(.vertical, 10)
+                if item.updatedAt != item.createdAt {
+                    Divider().padding(.leading)
+                    HStack {
+                        Text("Modified").foregroundStyle(.secondary)
+                        Spacer()
+                        Text(item.updatedAt, style: .date)
+                    }
+                    .padding(.horizontal).padding(.vertical, 10)
+                }
             }
             .background(Color.secondary.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 12))
