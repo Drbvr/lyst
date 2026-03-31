@@ -65,9 +65,10 @@ final class ImportViewModel {
             }
 
             statusMessage = "Connecting to AI…"
-            try await llm.waitUntilReady { [weak self] msg in
+            let updateStatus: @Sendable (String) async -> Void = { [weak self] msg in
                 await MainActor.run { self?.statusMessage = msg }
             }
+            try await llm.waitUntilReady(onProgress: updateStatus)
             statusMessage = "Generating note…"
             let response = try await llm.complete(messages: messages)
 
