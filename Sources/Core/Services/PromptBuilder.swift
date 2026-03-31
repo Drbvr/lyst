@@ -3,7 +3,6 @@ import Foundation
 /// Describes what kind of content was shared.
 public enum SharedContentType: Sendable {
     case url(String)
-    case image
 }
 
 /// Builds LLM messages for note creation from shared content.
@@ -96,15 +95,6 @@ public struct PromptBuilder {
                 parts.append("(Could not fetch page content — please infer from the URL.)")
             } else {
                 parts.append("Webpage content:")
-                parts.append(content)
-            }
-        case .image:
-            parts.append("I'm sharing an image.")
-            parts.append("")
-            if content.isEmpty {
-                parts.append("No text was found in the image.")
-            } else {
-                parts.append("Text found in the image (via OCR):")
                 parts.append(content)
             }
         }

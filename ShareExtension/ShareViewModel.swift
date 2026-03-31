@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
 import Core
-import Vision
 import UniformTypeIdentifiers
 
 // MARK: - Step state machine
@@ -117,45 +116,42 @@ final class ShareViewModel {
         step = .aiProcessing
         processingStatus = "Preparing…"
 
-        // 1. Fetch content
-        let content: String
-        let contentType: SharedContentType
-
-        if let urlString = sharedURL {
-            contentType = .url(urlString)
-            do {
-                processingStatus = "Fetching page content…"
-                content = try await WebContentFetcher().fetchText(from: urlString)
-            } catch {
-                // Non-fatal: proceed with empty content
-                content = ""
-            }
-        } else if let image = sharedImages.first {
-            contentType = .image
-            processingStatus = "Reading image text…"
-            content = await extractText(from: image)
-        } else {
-            step = .error("No shared content available.")
-            return
-        }
-
-        // 2. Load sample notes from vault for context
+        // 1. Load sample notes from vault for context
         let sampleNotes = promptBuilder.extractSampleNotes(from: loadVaultItems())
-
-        // 3. Build messages
         let systemPrompt = promptBuilder.buildSystemPrompt(
             listTypes: listTypes,
             sampleNotes: sampleNotes
         )
-        let userMessage = promptBuilder.buildUserMessage(
-            content: content,
-            contentType: contentType,
-            additionalText: additionalText
-        )
-        llmConversation = [
-            ["role": "system",  "content": systemPrompt],
-            ["role": "user",    "content": userMessage],
-        ]
+
+        // 2. Build messages based on content type
+        if let urlString = sharedURL {
+            let pageText: String
+            do {
+                processingStatus = "Fetching page content…"
+                pageText = try await WebContentFetcher().fetchText(from: urlString)
+            } catch {
+                pageText = ""
+            }
+            let userMessage = promptBuilder.buildUserMessage(
+                content: pageText,
+                contentType: .url(urlString),
+                additionalText: additionalText
+            )
+            llmConversation = [
+                ["role": "system", "content": systemPrompt],
+                ["role": "user",   "content": userMessage],
+            ]
+        } else if let image = sharedImages.first {
+            processingStatus = "Preparing image…"
+            let userContent = buildImageMessageParts(image)
+            llmConversation = [
+                ["role": "system", "content": systemPrompt],
+                ["role": "user",   "content": userContent],
+            ]
+        } else {
+            step = .error("No shared content available.")
+            return
+        }
 
         // 4. Warm up server if needed
         if settings.processingMode == .personalLLM {
@@ -402,21 +398,29 @@ final class ShareViewModel {
         }
     }
 
-    // MARK: - Image OCR
+    // MARK: - Image → multimodal message parts
 
-    private func extractText(from image: UIImage) async -> String {
-        guard let cgImage = image.cgImage else { return "" }
-        return await withCheckedContinuation { continuation in
-            let request = VNRecognizeTextRequest { request, _ in
-                let text = (request.results as? [VNRecognizedTextObservation] ?? [])
-                    .compactMap { $0.topCandidates(1).first?.string }
-                    .joined(separator: "\n")
-                continuation.resume(returning: text)
-            }
-            request.recognitionLevel = .accurate
-            let handler = VNImageRequestHandler(cgImage: cgImage)
-            try? handler.perform([request])
+    /// Encodes a UIImage as a base64 JPEG data URI and returns the
+    /// OpenAI-compatible multimodal content array for the user message.
+    private func buildImageMessageParts(_ image: UIImage) -> [[String: Any]] {
+        var parts: [[String: Any]] = []
+
+        if let data = image.jpegData(compressionQuality: 0.85) {
+            let base64 = data.base64EncodedString()
+            parts.append([
+                "type": "image_url",
+                "image_url": ["url": "data:image/jpeg;base64,\(base64)"]
+            ])
         }
+
+        var text = "Please create an appropriate note from this image."
+        let trimmed = additionalText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            text += "\n\nMy additional context: \(trimmed)"
+        }
+        parts.append(["type": "text", "text": text])
+
+        return parts
     }
 
     // MARK: - NSItemProvider helpers
