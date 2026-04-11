@@ -51,6 +51,9 @@
 		F88D77A17B05430FF89C772F /* AddSavedViewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A76AB45A9DA3B25D8602FBB1 /* AddSavedViewSheet.swift */; };
 		FB378AF6414D0F7FAECE7DAD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 37D48ECD8E9523FE66FB9C7F /* PrivacyInfo.xcprivacy */; };
 		FEA02974CA822281B5FFF09B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9F6BD350797F8512171DCE11 /* Assets.xcassets */; };
+		BB100000000000000000AA06 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000AA05 /* ShareViewController.swift */; };
+		BB100000000000000000AA10 /* Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 26722153A1EE1CEC3628BD83 /* Core.framework */; };
+		BB100000000000000000AA0D /* LystShareExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = BB100000000000000000AA04 /* LystShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +63,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 168EA85B830D619984958749;
 			remoteInfo = Core;
+		};
+		BB100000000000000000AA0F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0996159BE300823BF4730A1D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB100000000000000000AA01;
+			remoteInfo = LystShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -73,6 +83,17 @@
 				DA49585D50E5D3BA42E6D74C /* Core.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB100000000000000000AA0C /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BB100000000000000000AA0D /* LystShareExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -123,6 +144,10 @@
 		E8AE727A7993E82D1D7D7F89 /* ListTypeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListTypeDetailView.swift; sourceTree = "<group>"; };
 		EC6379FC2ABB5382BAC2211B /* PropertyValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyValue.swift; sourceTree = "<group>"; };
 		EE5569332D2CFE68404B4106 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
+		BB100000000000000000AA04 /* LystShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LystShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB100000000000000000AA05 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		BB100000000000000000AA07 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+		BB100000000000000000AA11 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -131,6 +156,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				AD3F84894508DC5042E8F332 /* Core.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB100000000000000000AA03 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB100000000000000000AA10 /* Core.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -161,8 +194,19 @@
 			children = (
 				26722153A1EE1CEC3628BD83 /* Core.framework */,
 				5D032F11B032D1244BA1FD6B /* Lijster.app */,
+				BB100000000000000000AA04 /* LystShareExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BB100000000000000000AA08 /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				BB100000000000000000AA11 /* Info.plist */,
+				BB100000000000000000AA07 /* ShareExtension.entitlements */,
+				BB100000000000000000AA05 /* ShareViewController.swift */,
+			);
+			path = ShareExtension;
 			sourceTree = "<group>";
 		};
 		355ED5C15E8B7718E0E7FCEB /* Components */ = {
@@ -251,6 +295,7 @@
 			children = (
 				4E4BDFF226784BDA92D26FA3 /* ListApp */,
 				35E1ECCC1AB9F28DA34EC3B2 /* Sources */,
+				BB100000000000000000AA08 /* ShareExtension */,
 				0B7B8D79729BFA3F9B6380C7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -336,11 +381,13 @@
 				A240EDC016776080D040B4BC /* Resources */,
 				0BB9FD0C55DDE8BF869E99F2 /* Frameworks */,
 				E92EF7369BDAE93829D17420 /* Embed Frameworks */,
+				BB100000000000000000AA0C /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				B647FCD349FA34DDC8BC4D69 /* PBXTargetDependency */,
+				BB100000000000000000AA0E /* PBXTargetDependency */,
 			);
 			name = ListApp;
 			packageProductDependencies = (
@@ -348,6 +395,24 @@
 			productName = ListApp;
 			productReference = 5D032F11B032D1244BA1FD6B /* Lijster.app */;
 			productType = "com.apple.product-type.application";
+		};
+		BB100000000000000000AA01 /* LystShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB100000000000000000AA0B /* Build configuration list for PBXNativeTarget "LystShareExtension" */;
+			buildPhases = (
+				BB100000000000000000AA02 /* Sources */,
+				BB100000000000000000AA03 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LystShareExtension;
+			packageProductDependencies = (
+			);
+			productName = LystShareExtension;
+			productReference = BB100000000000000000AA04 /* LystShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -374,6 +439,7 @@
 			targets = (
 				168EA85B830D619984958749 /* Core */,
 				662DC415FB361D2C7A869B8D /* ListApp */,
+				BB100000000000000000AA01 /* LystShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -445,6 +511,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB100000000000000000AA02 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB100000000000000000AA06 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -452,6 +526,11 @@
 			isa = PBXTargetDependency;
 			target = 168EA85B830D619984958749 /* Core */;
 			targetProxy = EDCF1072AA9568A2FD77A4C2 /* PBXContainerItemProxy */;
+		};
+		BB100000000000000000AA0E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB100000000000000000AA01 /* LystShareExtension */;
+			targetProxy = BB100000000000000000AA0F /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -681,6 +760,56 @@
 			};
 			name = Debug;
 		};
+		BB100000000000000000AA09 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S43L28SVX2;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../../Frameworks",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.bvanriessen.lijster.ShareExtension";
+				PRODUCT_NAME = LystShareExtension;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BB100000000000000000AA0A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S43L28SVX2;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../../Frameworks",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.bvanriessen.lijster.ShareExtension";
+				PRODUCT_NAME = LystShareExtension;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -707,6 +836,15 @@
 			buildConfigurations = (
 				CEAB8A2D5A8B510BCA69C6CD /* Debug */,
 				AEC371D662A8411836104285 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BB100000000000000000AA0B /* Build configuration list for PBXNativeTarget "LystShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB100000000000000000AA09 /* Debug */,
+				BB100000000000000000AA0A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

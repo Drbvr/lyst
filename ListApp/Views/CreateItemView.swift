@@ -7,6 +7,7 @@ struct CreateItemView: View {
 
     @State private var selectedType: ListType? = nil
     @State private var showNoVaultAlert = false
+    @State private var showAIImportSheet = false
 
     var body: some View {
         NavigationStack {
@@ -21,12 +22,57 @@ struct CreateItemView: View {
         } message: {
             Text("Please select a vault folder in Settings before creating items.")
         }
+        .sheet(isPresented: $showAIImportSheet) {
+            AIImportInputView { pending in
+                appState.pendingImport = pending
+                dismiss()
+            }
+            .environment(appState)
+        }
     }
 
     // MARK: - Step 1: Type selection
 
     private var typeSelectionView: some View {
         List {
+            if appState.llmSettings.processingMode == .personalLLM {
+                Section {
+                    Button {
+                        if appState.currentVaultURL == nil {
+                            showNoVaultAlert = true
+                        } else {
+                            showAIImportSheet = true
+                        }
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "sparkles")
+                                .font(.title3)
+                                .foregroundStyle(Color.purple)
+                                .frame(width: 32, height: 32)
+                                .background(Color.purple.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Generate with AI")
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+                                Text("From a URL or image")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("AI")
+                }
+            }
+
             Section {
                 ForEach(appState.listTypes, id: \.name) { type in
                     Button {
@@ -95,6 +141,119 @@ struct CreateItemView: View {
         case "restaurant": return "fork.knife"
         case "note":       return "note.text"
         default:           return "doc.text"
+        }
+    }
+}
+
+// MARK: - AI Import Input
+
+struct AIImportInputView: View {
+    @Environment(\.dismiss) private var dismiss
+    let onConfirm: (PendingImport) -> Void
+
+    @State private var urlText = ""
+    @State private var showImagePicker = false
+    @State private var showInvalidURLAlert = false
+    @State private var selectedImage: UIImage? = nil
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("https://example.com", text: $urlText)
+                        .keyboardType(.URL)
+                        .autocorrectionDisabled()
+                        .noAutocapitalization()
+                } header: {
+                    Text("Web URL")
+                } footer: {
+                    Text("Paste a link to a movie, book, article, restaurant, etc.")
+                }
+
+                Section {
+                    Button {
+                        showImagePicker = true
+                    } label: {
+                        Label("Choose Photo", systemImage: "photo")
+                    }
+                } header: {
+                    Text("Image")
+                } footer: {
+                    Text("Pick a screenshot or photo to extract content from.")
+                }
+            }
+            .navigationTitle("Generate with AI")
+            .navigationBarTitleInline()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Next") { submitURL() }
+                        .disabled(urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .alert("Invalid URL", isPresented: $showInvalidURLAlert) {
+                Button("OK") {}
+            } message: {
+                Text("Please enter a valid URL starting with https:// or http://")
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePickerView { image in
+                    if let img = image,
+                       let data = img.jpegData(compressionQuality: 0.9) {
+                        let tmp = FileManager.default.temporaryDirectory
+                            .appendingPathComponent("ai_import_\(UUID().uuidString).jpg")
+                        try? data.write(to: tmp)
+                        onConfirm(.image(tmp))
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func submitURL() {
+        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              url.scheme == "https" || url.scheme == "http" else {
+            showInvalidURLAlert = true
+            return
+        }
+        onConfirm(.webURL(url))
+        dismiss()
+    }
+}
+
+// MARK: - Image Picker
+
+private struct ImagePickerView: UIViewControllerRepresentable {
+    let onPick: (UIImage?) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .photoLibrary
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onPick: (UIImage?) -> Void
+        init(onPick: @escaping (UIImage?) -> Void) { self.onPick = onPick }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            picker.dismiss(animated: true)
+            onPick(info[.originalImage] as? UIImage)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+            onPick(nil)
         }
     }
 }
