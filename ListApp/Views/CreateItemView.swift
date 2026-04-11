@@ -1,5 +1,6 @@
 import SwiftUI
 import Core
+import PhotosUI
 
 struct CreateItemView: View {
     @Environment(AppState.self) private var appState
@@ -7,6 +8,10 @@ struct CreateItemView: View {
 
     @State private var selectedType: ListType? = nil
     @State private var showNoVaultAlert = false
+    @State private var showURLInput = false
+    @State private var pendingImportOnDismiss: PendingImport? = nil
+    @State private var selectedPhoto: PhotosPickerItem? = nil
+    @State private var isLoadingPhoto = false
 
     var body: some View {
         NavigationStack {
@@ -21,12 +26,81 @@ struct CreateItemView: View {
         } message: {
             Text("Please select a vault folder in Settings before creating items.")
         }
+        .sheet(isPresented: $showURLInput, onDismiss: {
+            if pendingImportOnDismiss != nil { dismiss() }
+        }) {
+            URLInputView { url in
+                pendingImportOnDismiss = .webURL(url)
+            }
+        }
+        .onChange(of: selectedPhoto) { _, newItem in
+            guard let newItem else { return }
+            selectedPhoto = nil
+            isLoadingPhoto = true
+            Task { await loadAndImportPhoto(newItem) }
+        }
+        .onDisappear {
+            if let pending = pendingImportOnDismiss {
+                appState.pendingImport = pending
+            }
+        }
+    }
+
+    // MARK: - Photo import helper
+
+    private func loadAndImportPhoto(_ item: PhotosPickerItem) async {
+        defer { Task { @MainActor in isLoadingPhoto = false } }
+        guard let data = try? await item.loadTransferable(type: Data.self) else { return }
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".jpg")
+        guard (try? data.write(to: tempURL)) != nil else { return }
+        await MainActor.run {
+            pendingImportOnDismiss = .image(tempURL)
+            dismiss()
+        }
     }
 
     // MARK: - Step 1: Type selection
 
     private var typeSelectionView: some View {
         List {
+            Section {
+                Button {
+                    if appState.currentVaultURL == nil {
+                        showNoVaultAlert = true
+                    } else {
+                        showURLInput = true
+                    }
+                } label: {
+                    Label("From URL", systemImage: "link")
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+
+                if appState.currentVaultURL == nil {
+                    Button {
+                        showNoVaultAlert = true
+                    } label: {
+                        Label("From Photo", systemImage: "photo")
+                            .foregroundStyle(.primary)
+                    }
+                    .buttonStyle(.plain)
+                } else if isLoadingPhoto {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Loading photo…")
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        Label("From Photo", systemImage: "photo")
+                            .foregroundStyle(.primary)
+                    }
+                }
+            } header: {
+                Label("Generate with AI", systemImage: "sparkles")
+            }
+
             Section {
                 ForEach(appState.listTypes, id: \.name) { type in
                     Button {
@@ -257,5 +331,58 @@ private struct FieldsFormView: View {
             }
         }
         onSave()
+    }
+}
+
+// MARK: - URL Input
+
+private struct URLInputView: View {
+    let onImport: (URL) -> Void
+    @State private var urlText = ""
+    @State private var isInvalid = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("https://example.com", text: $urlText)
+                        #if os(iOS)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        #endif
+                        .autocorrectionDisabled()
+                        .onSubmit { submit() }
+                } footer: {
+                    if isInvalid {
+                        Text("Please enter a valid https:// or http:// URL.")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Import from URL")
+            .navigationBarTitleInline()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Import") { submit() }
+                        .fontWeight(.semibold)
+                        .disabled(urlText.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func submit() {
+        let trimmed = urlText.trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: trimmed),
+              url.scheme == "https" || url.scheme == "http" else {
+            isInvalid = true
+            return
+        }
+        onImport(url)
+        dismiss()
     }
 }
