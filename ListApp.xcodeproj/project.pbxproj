@@ -94,7 +94,7 @@
 		46D6D94061325CF1B939E286 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
 		4D64EA52A4DCB2A9BEBD0EFB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4F657F9AA6B823FEF528A0D5 /* ListApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ListApp.entitlements; sourceTree = "<group>"; };
-		5D032F11B032D1244BA1FD6B /* ListApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ListApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5D032F11B032D1244BA1FD6B /* Lijster.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lijster.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7569AB676721CE355FB7DFFA /* ViewManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewManager.swift; sourceTree = "<group>"; };
 		758E6F984249740C47FDC9CC /* LLMSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMSettings.swift; sourceTree = "<group>"; };
 		75EEFDBB1A6FAE084203BA5A /* TagBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagBrowserView.swift; sourceTree = "<group>"; };
@@ -160,7 +160,7 @@
 			isa = PBXGroup;
 			children = (
 				26722153A1EE1CEC3628BD83 /* Core.framework */,
-				5D032F11B032D1244BA1FD6B /* ListApp.app */,
+				5D032F11B032D1244BA1FD6B /* Lijster.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -346,7 +346,7 @@
 			packageProductDependencies = (
 			);
 			productName = ListApp;
-			productReference = 5D032F11B032D1244BA1FD6B /* ListApp.app */;
+			productReference = 5D032F11B032D1244BA1FD6B /* Lijster.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -500,7 +500,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.bvanriessen.listapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bvanriessen.lijster;
+				PRODUCT_NAME = Lijster;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
@@ -552,7 +553,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.bvanriessen.listapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bvanriessen.lijster;
+				PRODUCT_NAME = Lijster;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
