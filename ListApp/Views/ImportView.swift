@@ -222,22 +222,20 @@ struct ImportView: View {
             }
 
             VStack(spacing: 12) {
-                if appState.llmSettings.processingMode == .personalLLM {
-                    Button {
-                        Task {
-                            await viewModel.processWithAI(
-                                settings: appState.llmSettings,
-                                listTypes: appState.listTypes,
-                                items: appState.items
-                            )
-                        }
-                    } label: {
-                        Label("Process with AI", systemImage: "sparkles")
-                            .frame(maxWidth: .infinity)
+                Button {
+                    Task {
+                        await viewModel.processWithAI(
+                            settings: appState.llmSettings,
+                            listTypes: appState.listTypes,
+                            items: appState.items
+                        )
                     }
-                    .buttonStyle(.borderedProminent)
-                    .padding(.horizontal)
+                } label: {
+                    Label("Process with AI", systemImage: "sparkles")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .padding(.horizontal)
 
                 Button {
                     showManualEntry = true

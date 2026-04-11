@@ -64,43 +64,41 @@ struct CreateItemView: View {
 
     private var typeSelectionView: some View {
         List {
-            if appState.llmSettings.processingMode == .personalLLM {
-                Section {
+            Section {
+                Button {
+                    if appState.currentVaultURL == nil {
+                        showNoVaultAlert = true
+                    } else {
+                        showURLInput = true
+                    }
+                } label: {
+                    Label("From URL", systemImage: "link")
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+
+                if appState.currentVaultURL == nil {
                     Button {
-                        if appState.currentVaultURL == nil {
-                            showNoVaultAlert = true
-                        } else {
-                            showURLInput = true
-                        }
+                        showNoVaultAlert = true
                     } label: {
-                        Label("From URL", systemImage: "link")
+                        Label("From Photo", systemImage: "photo")
                             .foregroundStyle(.primary)
                     }
                     .buttonStyle(.plain)
-
-                    if appState.currentVaultURL == nil {
-                        Button {
-                            showNoVaultAlert = true
-                        } label: {
-                            Label("From Photo", systemImage: "photo")
-                                .foregroundStyle(.primary)
-                        }
-                        .buttonStyle(.plain)
-                    } else if isLoadingPhoto {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                            Text("Loading photo…")
-                                .foregroundStyle(.secondary)
-                        }
-                    } else {
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Label("From Photo", systemImage: "photo")
-                                .foregroundStyle(.primary)
-                        }
+                } else if isLoadingPhoto {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Loading photo…")
+                            .foregroundStyle(.secondary)
                     }
-                } header: {
-                    Label("Generate with AI", systemImage: "sparkles")
+                } else {
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        Label("From Photo", systemImage: "photo")
+                            .foregroundStyle(.primary)
+                    }
                 }
+            } header: {
+                Label("Generate with AI", systemImage: "sparkles")
             }
 
             Section {
