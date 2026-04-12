@@ -28,6 +28,7 @@ final class ImportViewModel {
     private var storedUserMessage: String = ""          // Apple Intelligence path
     private var storedMessages: [[String: Any]] = []    // Personal LLM path
     private var storedLastResponse: String = ""
+    private var generatedWithOnDevice: Bool = false     // tracks which engine to reuse
 
     let pending: PendingImport
 
@@ -105,6 +106,7 @@ final class ImportViewModel {
                 storedSystemPrompt = systemPrompt
                 storedUserMessage = userMessage
                 storedLastResponse = response
+                generatedWithOnDevice = true
                 applyResult(title: title, type: type, properties: properties, tags: tags)
             case .invalid(let reason):
                 errorMessage = reason
@@ -167,6 +169,7 @@ final class ImportViewModel {
             case .success(let title, let type, let properties, let tags):
                 storedMessages = messages
                 storedLastResponse = response
+                generatedWithOnDevice = false
                 applyResult(title: title, type: type, properties: properties, tags: tags)
             case .invalid(let reason):
                 statusMessage = "Refining response…"
@@ -178,6 +181,7 @@ final class ImportViewModel {
                 case .success(let title, let type, let properties, let tags):
                     storedMessages = retryMsgs
                     storedLastResponse = retryResponse
+                    generatedWithOnDevice = false
                     applyResult(title: title, type: type, properties: properties, tags: tags)
                 case .invalid(let reason2):
                     errorMessage = reason2
@@ -192,18 +196,18 @@ final class ImportViewModel {
 
     // MARK: - Per-note regeneration with feedback
 
-    func regenerate(settings: LLMSettings, listTypes: [ListType], items: [Item]) async {
+    func regenerate(settings: LLMSettings, listTypes: [ListType]) async {
         let feedback = refinementText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !feedback.isEmpty else { return }
 
         isRegenerating = true
+        errorMessage = nil
         defer { isRegenerating = false }
 
         let parser = NoteResponseParser()
 
-        if #available(iOS 26, macOS 26, *), settings.processingMode == .onDevice,
-           AppleIntelligenceService.isAvailable {
-            // Re-run with prior attempt + feedback injected into user message
+        if #available(iOS 26, macOS 26, *), generatedWithOnDevice {
+            // Re-run using the same on-device engine, with prior attempt + feedback in user message
             let enhancedUser = storedUserMessage
                 + "\n\nPrevious attempt:\n```yaml\n\(storedLastResponse)\n```"
                 + "\n\nPlease revise with this feedback: \(feedback)"
@@ -212,26 +216,36 @@ final class ImportViewModel {
                     systemPrompt: storedSystemPrompt,
                     userMessage: enhancedUser
                 )
-                if case .success(let title, let type, let props, let tags) =
-                    parser.parse(response: response, listTypes: listTypes) {
+                switch parser.parse(response: response, listTypes: listTypes) {
+                case .success(let title, let type, let props, let tags):
                     storedLastResponse = response
                     refinementText = ""
                     applyResult(title: title, type: type, properties: props, tags: tags)
+                case .invalid(let reason):
+                    errorMessage = reason
                 }
-            } catch {}
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         } else {
             // Personal LLM: true multi-turn — extend the conversation chain
             var msgs = storedMessages
             msgs.append(["role": "assistant", "content": storedLastResponse])
             msgs.append(["role": "user",      "content": feedback])
             let llm = LLMService(settings: settings)
-            if let response = try? await llm.complete(messages: msgs),
-               case .success(let title, let type, let props, let tags) =
-                parser.parse(response: response, listTypes: listTypes) {
-                storedMessages = msgs
-                storedLastResponse = response
-                refinementText = ""
-                applyResult(title: title, type: type, properties: props, tags: tags)
+            do {
+                let response = try await llm.complete(messages: msgs)
+                switch parser.parse(response: response, listTypes: listTypes) {
+                case .success(let title, let type, let props, let tags):
+                    storedMessages = msgs
+                    storedLastResponse = response
+                    refinementText = ""
+                    applyResult(title: title, type: type, properties: props, tags: tags)
+                case .invalid(let reason):
+                    errorMessage = reason
+                }
+            } catch {
+                errorMessage = error.localizedDescription
             }
         }
     }
@@ -457,6 +471,13 @@ struct ImportView: View {
                     }
                 }
             }
+            if let regenerateError = viewModel.errorMessage {
+                Section {
+                    Text(regenerateError)
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                }
+            }
             Section {
                 TextField(
                     "e.g. \"This is actually a movie\"",
@@ -468,8 +489,7 @@ struct ImportView: View {
                     Task {
                         await viewModel.regenerate(
                             settings: appState.llmSettings,
-                            listTypes: appState.listTypes,
-                            items: appState.items
+                            listTypes: appState.listTypes
                         )
                     }
                 } label: {

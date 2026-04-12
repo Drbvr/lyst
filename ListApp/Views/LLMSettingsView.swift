@@ -85,13 +85,13 @@ struct LLMSettingsView: View {
             }
         }
         .navigationTitle("AI Note Generation")
-        .onChange(of: settings.processingMode)                   { _, _ in settings.save() }
-        .onChange(of: settings.imageProcessingMode)              { _, _ in settings.save() }
-        .onChange(of: settings.baseURL)                          { _, _ in settings.save() }
-        .onChange(of: settings.model)                            { _, _ in settings.save() }
-        .onChange(of: settings.apiKey)                           { _, _ in settings.save() }
-        .onChange(of: settings.useThinking)                      { _, _ in settings.save() }
-        .onChange(of: settings.customSystemPromptInstructions)   { _, _ in settings.save() }
+        .onChange(of: settings.processingMode)      { _, _ in settings.save() }
+        .onChange(of: settings.imageProcessingMode) { _, _ in settings.save() }
+        .onChange(of: settings.baseURL)             { _, _ in settings.save() }
+        .onChange(of: settings.model)               { _, _ in settings.save() }
+        .onChange(of: settings.apiKey)              { _, _ in settings.save() }
+        .onChange(of: settings.useThinking)         { _, _ in settings.save() }
+        .onDisappear                                { settings.save() }
         .alert(connectionAlertTitle, isPresented: $showConnectionAlert) {
             Button("OK", role: .cancel) {}
         } message: {

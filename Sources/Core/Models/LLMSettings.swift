@@ -59,6 +59,19 @@ public struct LLMSettings: Codable {
         self.customSystemPromptInstructions   = customSystemPromptInstructions
     }
 
+    /// Custom decoder so that existing stored JSON (without customSystemPromptInstructions)
+    /// continues to decode successfully — the field defaults to "" when absent.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        processingMode                 = try c.decode(ProcessingMode.self,     forKey: .processingMode)
+        imageProcessingMode            = try c.decode(ImageProcessingMode.self, forKey: .imageProcessingMode)
+        baseURL                        = try c.decode(String.self,             forKey: .baseURL)
+        model                          = try c.decode(String.self,             forKey: .model)
+        useThinking                    = try c.decode(Bool.self,               forKey: .useThinking)
+        apiKey                         = try c.decode(String.self,             forKey: .apiKey)
+        customSystemPromptInstructions = try c.decodeIfPresent(String.self,    forKey: .customSystemPromptInstructions) ?? ""
+    }
+
     /// Load from the shared App Group container, falling back to defaults.
     public static func load() -> LLMSettings {
         guard
