@@ -14,7 +14,11 @@ public struct PromptBuilder {
     // MARK: - System Prompt
 
     /// Build the system message that describes available note types and expected output.
-    public func buildSystemPrompt(listTypes: [ListType], sampleNotes: [String]) -> String {
+    public func buildSystemPrompt(
+        listTypes: [ListType],
+        sampleNotes: [String],
+        customInstructions: String = ""
+    ) -> String {
         var lines: [String] = []
 
         lines.append("""
@@ -73,6 +77,14 @@ public struct PromptBuilder {
                 lines.append("```")
                 lines.append("")
             }
+        }
+
+        let trimmedCustom = customInstructions.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedCustom.isEmpty {
+            lines.append("")
+            lines.append("## Custom Instructions")
+            lines.append("")
+            lines.append(trimmedCustom)
         }
 
         return lines.joined(separator: "\n")

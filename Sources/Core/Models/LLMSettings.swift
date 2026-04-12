@@ -39,6 +39,7 @@ public struct LLMSettings: Codable {
     public var model: String
     public var useThinking: Bool
     public var apiKey: String
+    public var customSystemPromptInstructions: String
 
     public init(
         processingMode: ProcessingMode = .onDevice,
@@ -46,14 +47,16 @@ public struct LLMSettings: Codable {
         baseURL: String = "",
         model: String = "",
         useThinking: Bool = false,
-        apiKey: String = ""
+        apiKey: String = "",
+        customSystemPromptInstructions: String = ""
     ) {
-        self.processingMode      = processingMode
-        self.imageProcessingMode = imageProcessingMode
-        self.baseURL             = baseURL
-        self.model               = model
-        self.useThinking         = useThinking
-        self.apiKey              = apiKey
+        self.processingMode                   = processingMode
+        self.imageProcessingMode              = imageProcessingMode
+        self.baseURL                          = baseURL
+        self.model                            = model
+        self.useThinking                      = useThinking
+        self.apiKey                           = apiKey
+        self.customSystemPromptInstructions   = customSystemPromptInstructions
     }
 
     /// Load from the shared App Group container, falling back to defaults.

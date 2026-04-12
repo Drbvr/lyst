@@ -21,6 +21,15 @@ struct LLMSettingsView: View {
                 modeFooter
             }
 
+            Section {
+                TextEditor(text: $settings.customSystemPromptInstructions)
+                    .frame(minHeight: 100)
+            } header: {
+                Text("Custom Instructions")
+            } footer: {
+                Text("Appended to every system prompt. Use this to set language, tone, or extra rules for note generation.")
+            }
+
             if settings.processingMode == .personalLLM {
                 Section {
                     LabeledContent("Base URL") {
@@ -76,12 +85,13 @@ struct LLMSettingsView: View {
             }
         }
         .navigationTitle("AI Note Generation")
-        .onChange(of: settings.processingMode)      { _, _ in settings.save() }
-        .onChange(of: settings.imageProcessingMode) { _, _ in settings.save() }
-        .onChange(of: settings.baseURL)             { _, _ in settings.save() }
-        .onChange(of: settings.model)               { _, _ in settings.save() }
-        .onChange(of: settings.apiKey)              { _, _ in settings.save() }
-        .onChange(of: settings.useThinking)         { _, _ in settings.save() }
+        .onChange(of: settings.processingMode)                   { _, _ in settings.save() }
+        .onChange(of: settings.imageProcessingMode)              { _, _ in settings.save() }
+        .onChange(of: settings.baseURL)                          { _, _ in settings.save() }
+        .onChange(of: settings.model)                            { _, _ in settings.save() }
+        .onChange(of: settings.apiKey)                           { _, _ in settings.save() }
+        .onChange(of: settings.useThinking)                      { _, _ in settings.save() }
+        .onChange(of: settings.customSystemPromptInstructions)   { _, _ in settings.save() }
         .alert(connectionAlertTitle, isPresented: $showConnectionAlert) {
             Button("OK", role: .cancel) {}
         } message: {
