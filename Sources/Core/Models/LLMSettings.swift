@@ -39,6 +39,7 @@ public struct LLMSettings: Codable {
     public var model: String
     public var useThinking: Bool
     public var apiKey: String
+    public var customSystemPromptInstructions: String
 
     public init(
         processingMode: ProcessingMode = .onDevice,
@@ -46,14 +47,29 @@ public struct LLMSettings: Codable {
         baseURL: String = "",
         model: String = "",
         useThinking: Bool = false,
-        apiKey: String = ""
+        apiKey: String = "",
+        customSystemPromptInstructions: String = ""
     ) {
-        self.processingMode      = processingMode
-        self.imageProcessingMode = imageProcessingMode
-        self.baseURL             = baseURL
-        self.model               = model
-        self.useThinking         = useThinking
-        self.apiKey              = apiKey
+        self.processingMode                   = processingMode
+        self.imageProcessingMode              = imageProcessingMode
+        self.baseURL                          = baseURL
+        self.model                            = model
+        self.useThinking                      = useThinking
+        self.apiKey                           = apiKey
+        self.customSystemPromptInstructions   = customSystemPromptInstructions
+    }
+
+    /// Custom decoder so that existing stored JSON (without customSystemPromptInstructions)
+    /// continues to decode successfully — the field defaults to "" when absent.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        processingMode                 = try c.decode(ProcessingMode.self,     forKey: .processingMode)
+        imageProcessingMode            = try c.decode(ImageProcessingMode.self, forKey: .imageProcessingMode)
+        baseURL                        = try c.decode(String.self,             forKey: .baseURL)
+        model                          = try c.decode(String.self,             forKey: .model)
+        useThinking                    = try c.decode(Bool.self,               forKey: .useThinking)
+        apiKey                         = try c.decode(String.self,             forKey: .apiKey)
+        customSystemPromptInstructions = try c.decodeIfPresent(String.self,    forKey: .customSystemPromptInstructions) ?? ""
     }
 
     /// Load from the shared App Group container, falling back to defaults.

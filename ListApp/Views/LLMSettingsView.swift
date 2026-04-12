@@ -21,6 +21,15 @@ struct LLMSettingsView: View {
                 modeFooter
             }
 
+            Section {
+                TextEditor(text: $settings.customSystemPromptInstructions)
+                    .frame(minHeight: 100)
+            } header: {
+                Text("Custom Instructions")
+            } footer: {
+                Text("Appended to every system prompt. Use this to set language, tone, or extra rules for note generation.")
+            }
+
             if settings.processingMode == .personalLLM {
                 Section {
                     LabeledContent("Base URL") {
@@ -82,6 +91,7 @@ struct LLMSettingsView: View {
         .onChange(of: settings.model)               { _, _ in settings.save() }
         .onChange(of: settings.apiKey)              { _, _ in settings.save() }
         .onChange(of: settings.useThinking)         { _, _ in settings.save() }
+        .onDisappear                                { settings.save() }
         .alert(connectionAlertTitle, isPresented: $showConnectionAlert) {
             Button("OK", role: .cancel) {}
         } message: {
