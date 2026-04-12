@@ -110,7 +110,7 @@ struct LLMSettingsView: View {
     private var modeFooter: some View {
         switch settings.processingMode {
         case .onDevice:
-            Text("Uses Apple Intelligence on-device models. Requires iOS 18.1+ with Apple Intelligence enabled.")
+            Text("Uses Apple Intelligence on-device models. Requires iOS 26+ with Apple Intelligence enabled.")
         case .personalLLM:
             Text("Connect to your own OpenAI-compatible server (e.g. Ollama, LM Studio, or a custom endpoint).")
         }

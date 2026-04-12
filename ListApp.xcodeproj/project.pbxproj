@@ -10,6 +10,7 @@
 		0E8B5A39CC95ED426CACBCC4 /* ItemRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94175AF476086CA92FD0AFF0 /* ItemRowView.swift */; };
 		0EE0040DE4363B0550809F99 /* FileScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138AC2A36890C0D54C73DFE3 /* FileScanner.swift */; };
 		23D57786CDF654BA8CC8CDBD /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FAF27187C043B4FD3C9EEE2 /* LLMService.swift */; };
+		6119CFADE6854A9EA0FD8DA7 /* AppleIntelligenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B8B6CD654684BA68C83F2AD /* AppleIntelligenceService.swift */; };
 		2843008E6E334D1B89249268 /* FilterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA01D9EAC2BC3C7BCE23AA11 /* FilterEngine.swift */; };
 		296E886257BC6AED229A3AC8 /* TagBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75EEFDBB1A6FAE084203BA5A /* TagBrowserView.swift */; };
 		2EC169306AF75B4237B15515 /* SavedViewsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37447FAA81C2A4AB8781A5FC /* SavedViewsListView.swift */; };
@@ -85,6 +86,7 @@
 		18DD8CCF6744766E8B0F32A1 /* NoteResponseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteResponseParser.swift; sourceTree = "<group>"; };
 		1CB498DDCA1C1EE644701623 /* FilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterView.swift; sourceTree = "<group>"; };
 		1FAF27187C043B4FD3C9EEE2 /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
+		6B8B6CD654684BA68C83F2AD /* AppleIntelligenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligenceService.swift; sourceTree = "<group>"; };
 		26722153A1EE1CEC3628BD83 /* Core.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Core.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F03BAA307C6CA3791752845 /* FileSystemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemManager.swift; sourceTree = "<group>"; };
 		37447FAA81C2A4AB8781A5FC /* SavedViewsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedViewsListView.swift; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 		08EB83D285ABABA5F23553E1 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				6B8B6CD654684BA68C83F2AD /* AppleIntelligenceService.swift */,
 				1FAF27187C043B4FD3C9EEE2 /* LLMService.swift */,
 				18DD8CCF6744766E8B0F32A1 /* NoteResponseParser.swift */,
 				85A84474E907996DE82622CA /* PromptBuilder.swift */,
@@ -395,6 +398,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6119CFADE6854A9EA0FD8DA7 /* AppleIntelligenceService.swift in Sources */,
 				89AEB55A990C4F7BA8D08555 /* Core.swift in Sources */,
 				0EE0040DE4363B0550809F99 /* FileScanner.swift in Sources */,
 				6515008C2767CC1B95D988C5 /* FileSystemManager.swift in Sources */,

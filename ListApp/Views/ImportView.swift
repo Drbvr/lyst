@@ -31,6 +31,72 @@ final class ImportViewModel {
         step = .processing
         errorMessage = nil
 
+        if #available(iOS 26, macOS 26, *), settings.processingMode == .onDevice {
+            if AppleIntelligenceService.isAvailable {
+                await processWithAppleIntelligence(listTypes: listTypes, items: items)
+            } else {
+                errorMessage = AppleIntelligenceError.unavailable.localizedDescription
+                step = .decision
+            }
+        } else {
+            await processWithPersonalLLM(settings: settings, listTypes: listTypes, items: items)
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func processWithAppleIntelligence(listTypes: [ListType], items: [Item]) async {
+        let promptBuilder = PromptBuilder()
+        let parser = NoteResponseParser()
+        let systemPrompt = promptBuilder.buildSystemPrompt(
+            listTypes: listTypes,
+            sampleNotes: promptBuilder.extractSampleNotes(from: items)
+        )
+
+        do {
+            let userMessage: String
+            switch pending {
+            case .image(let fileURL):
+                // Always OCR for on-device — FoundationModels has no vision input
+                statusMessage = "Extracting text from image…"
+                let ocrText = await extractText(from: fileURL)
+                userMessage = promptBuilder.buildUserMessage(
+                    content: ocrText, contentType: .image, additionalText: "")
+            case .webURL(let url):
+                statusMessage = "Fetching page content…"
+                let pageText = (try? await WebContentFetcher().fetchText(from: url.absoluteString)) ?? ""
+                userMessage = promptBuilder.buildUserMessage(
+                    content: pageText, contentType: .url(url.absoluteString), additionalText: "")
+            }
+
+            statusMessage = "Generating note…"
+            let service = AppleIntelligenceService()
+            let response = try await service.complete(
+                systemPrompt: systemPrompt,
+                userMessage: userMessage,
+                retryPrompt: { [parser, listTypes] first in
+                    if case .invalid(let reason) = parser.parse(response: first, listTypes: listTypes) {
+                        return promptBuilder.buildRetryMessage(reason: reason)
+                    }
+                    return nil
+                }
+            )
+
+            switch parser.parse(response: response, listTypes: listTypes) {
+            case .success(let title, let type, let properties, let tags):
+                applyResult(title: title, type: type, properties: properties, tags: tags)
+            case .invalid(let reason):
+                errorMessage = reason
+                step = .decision
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            step = .decision
+        }
+    }
+
+    private func processWithPersonalLLM(
+        settings: LLMSettings, listTypes: [ListType], items: [Item]
+    ) async {
         let llm = LLMService(settings: settings)
         let promptBuilder = PromptBuilder()
         let parser = NoteResponseParser()
