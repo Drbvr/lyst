@@ -65,6 +65,12 @@ public struct PromptBuilder {
         lines.append("- Use plain numbers (not strings) for number fields")
         lines.append("- Keep tags short and relevant (optional)")
         lines.append("- Return ONLY the ```yaml block — no other text, explanation, or markdown")
+        lines.append("")
+        lines.append("## Batching")
+        lines.append("")
+        lines.append("When the content describes multiple distinct items (e.g. a list of books, restaurants, or tasks),")
+        lines.append("return one ```yaml block per item — in sequence with no separator between them.")
+        lines.append("For a single item, return exactly one ```yaml block.")
 
         if !sampleNotes.isEmpty {
             lines.append("")
@@ -138,6 +144,47 @@ public struct PromptBuilder {
     public func buildRetryMessage(reason: String) -> String {
         "Your previous response was invalid: \(reason). " +
         "Please correct it and return ONLY valid YAML frontmatter inside ```yaml ``` fences."
+    }
+
+    // MARK: - Tool Definitions
+
+    /// Returns the two tool definitions (web_fetch, ask_user) in OpenAI function-calling format.
+    public func buildTools() -> [[String: Any]] {
+        [
+            [
+                "type": "function",
+                "function": [
+                    "name": "web_fetch",
+                    "description": "Fetch the readable text content of a URL. Use this when the shared content contains a URL you need to look up to create an accurate note.",
+                    "parameters": [
+                        "type": "object",
+                        "properties": [
+                            "url": ["type": "string", "description": "The URL to fetch"],
+                        ],
+                        "required": ["url"],
+                    ],
+                ],
+            ],
+            [
+                "type": "function",
+                "function": [
+                    "name": "ask_user",
+                    "description": "Ask the user a short clarifying question when the content is ambiguous and you cannot determine a required field without more information.",
+                    "parameters": [
+                        "type": "object",
+                        "properties": [
+                            "question": ["type": "string", "description": "The question to show the user"],
+                        ],
+                        "required": ["question"],
+                    ],
+                ],
+            ],
+        ]
+    }
+
+    /// Build a tool-result message to append to the conversation after executing a tool call.
+    public func buildToolResult(callID: String, content: String) -> [String: Any] {
+        ["role": "tool", "tool_call_id": callID, "content": content]
     }
 
     // MARK: - Sample Note Extraction

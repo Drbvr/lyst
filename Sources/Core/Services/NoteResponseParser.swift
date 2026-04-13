@@ -77,23 +77,40 @@ public struct NoteResponseParser {
         )
     }
 
+    // MARK: - Batch Parsing
+
+    /// Parse all \`\`\`yaml blocks in a response and return every successfully parsed note.
+    /// Invalid blocks are silently dropped.
+    public func parseAll(response: String, listTypes: [ListType]) -> [NoteEdit] {
+        extractAllYAMLBlocks(from: response).compactMap { block in
+            let wrapped = "```yaml\n\(block)\n```"
+            if case .success(let title, let type, let properties, let tags) = parse(response: wrapped, listTypes: listTypes) {
+                return NoteEdit(type: type, title: title, properties: properties, tags: tags)
+            }
+            return nil
+        }
+    }
+
     // MARK: - Private helpers
 
     /// Extract the content inside the first ```yaml ... ``` fence.
     private func extractYAMLBlock(from text: String) -> String? {
-        let pattern = #"```yaml\s*\n([\s\S]*?)```"#
-        guard
-            let regex = try? NSRegularExpression(pattern: pattern),
-            let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-            let range = Range(match.range(at: 1), in: text)
-        else { return nil }
+        extractAllYAMLBlocks(from: text).first
+    }
 
-        return String(text[range])
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            // Strip surrounding --- delimiters if present
-            .components(separatedBy: .newlines)
-            .filter { $0 != "---" }
-            .joined(separator: "\n")
+    /// Extract the contents of every ```yaml ... ``` fence in order.
+    private func extractAllYAMLBlocks(from text: String) -> [String] {
+        let pattern = #"```yaml\s*\n([\s\S]*?)```"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let nsRange = NSRange(text.startIndex..., in: text)
+        return regex.matches(in: text, range: nsRange).compactMap { match in
+            guard let range = Range(match.range(at: 1), in: text) else { return nil }
+            return String(text[range])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines)
+                .filter { $0 != "---" }
+                .joined(separator: "\n")
+        }
     }
 
     /// Extract a simple scalar value: `key: value` (first match wins).

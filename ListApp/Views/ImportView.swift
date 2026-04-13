@@ -7,28 +7,29 @@ import Vision
 @Observable
 @MainActor
 final class ImportViewModel {
-    enum Step { case decision, processing, preview }
+    enum Step { case processing, preview }
 
-    var step: Step = .decision
+    var step: Step = .processing
     var statusMessage = "Analysing content…"
     var errorMessage: String? = nil
 
-    // Editable preview fields
-    var editTitle = ""
-    var editTags = ""   // comma-separated
-    var editType = "todo"
-    var editProperties: [String: PropertyValue] = [:]
+    // Generated notes shown in the preview step
+    var notes: [NoteEdit] = []
 
-    // Refinement UI state
+    // ask_user tool: non-nil while waiting for the user to answer
+    var pendingQuestion: String? = nil
+    var questionAnswer: String = ""
+    private var questionContinuation: CheckedContinuation<String, Never>? = nil
+
+    // Refinement (regenerate the whole batch with feedback)
     var refinementText: String = ""
     var isRegenerating: Bool = false
 
-    // Stored conversation state for per-note regeneration
+    // Stored conversation for regeneration
     private var storedSystemPrompt: String = ""
-    private var storedUserMessage: String = ""          // Apple Intelligence path
-    private var storedMessages: [[String: Any]] = []    // Personal LLM path
+    private var storedMessages: [[String: Any]] = []
     private var storedLastResponse: String = ""
-    private var generatedWithOnDevice: Bool = false     // tracks which engine to reuse
+    private var generatedWithOnDevice: Bool = false
 
     let pending: PendingImport
 
@@ -36,7 +37,7 @@ final class ImportViewModel {
         self.pending = pending
     }
 
-    // MARK: - AI Processing
+    // MARK: - Entry point
 
     func processWithAI(settings: LLMSettings, listTypes: [ListType], items: [Item]) async {
         step = .processing
@@ -45,24 +46,22 @@ final class ImportViewModel {
         if #available(iOS 26, macOS 26, *), settings.processingMode == .onDevice {
             if AppleIntelligenceService.isAvailable {
                 await processWithAppleIntelligence(
-                    listTypes: listTypes,
-                    items: items,
+                    listTypes: listTypes, items: items,
                     customInstructions: settings.customSystemPromptInstructions
                 )
             } else {
                 errorMessage = AppleIntelligenceError.unavailable.localizedDescription
-                step = .decision
             }
         } else {
             await processWithPersonalLLM(settings: settings, listTypes: listTypes, items: items)
         }
     }
 
+    // MARK: - Apple Intelligence (no tool calling; pre-process everything)
+
     @available(iOS 26.0, macOS 26.0, *)
     private func processWithAppleIntelligence(
-        listTypes: [ListType],
-        items: [Item],
-        customInstructions: String
+        listTypes: [ListType], items: [Item], customInstructions: String
     ) async {
         let promptBuilder = PromptBuilder()
         let parser = NoteResponseParser()
@@ -71,52 +70,28 @@ final class ImportViewModel {
             sampleNotes: promptBuilder.extractSampleNotes(from: items),
             customInstructions: customInstructions
         )
+        storedSystemPrompt = systemPrompt
 
         do {
-            let userMessage: String
-            switch pending {
-            case .image(let fileURL):
-                // Always OCR for on-device — FoundationModels has no vision input
-                statusMessage = "Extracting text from image…"
-                let ocrText = await extractText(from: fileURL)
-                userMessage = promptBuilder.buildUserMessage(
-                    content: ocrText, contentType: .image, additionalText: "")
-            case .webURL(let url):
-                statusMessage = "Fetching page content…"
-                let pageText = (try? await WebContentFetcher().fetchText(from: url.absoluteString)) ?? ""
-                userMessage = promptBuilder.buildUserMessage(
-                    content: pageText, contentType: .url(url.absoluteString), additionalText: "")
-            }
-
-            statusMessage = "Generating note…"
+            let userMessage = try await buildTextUserMessage(promptBuilder: promptBuilder, fetchURLs: true)
             let service = AppleIntelligenceService()
             let response = try await service.complete(
                 systemPrompt: systemPrompt,
                 userMessage: userMessage,
                 retryPrompt: { [parser, listTypes] first in
-                    if case .invalid(let reason) = parser.parse(response: first, listTypes: listTypes) {
-                        return promptBuilder.buildRetryMessage(reason: reason)
-                    }
-                    return nil
+                    parser.parseAll(response: first, listTypes: listTypes).isEmpty
+                        ? promptBuilder.buildRetryMessage(reason: "No valid ```yaml blocks found.")
+                        : nil
                 }
             )
-
-            switch parser.parse(response: response, listTypes: listTypes) {
-            case .success(let title, let type, let properties, let tags):
-                storedSystemPrompt = systemPrompt
-                storedUserMessage = userMessage
-                storedLastResponse = response
-                generatedWithOnDevice = true
-                applyResult(title: title, type: type, properties: properties, tags: tags)
-            case .invalid(let reason):
-                errorMessage = reason
-                step = .decision
-            }
+            applyResponse(response, parser: parser, listTypes: listTypes)
+            generatedWithOnDevice = true
         } catch {
             errorMessage = error.localizedDescription
-            step = .decision
         }
     }
+
+    // MARK: - Personal LLM (tool calling loop)
 
     private func processWithPersonalLLM(
         settings: LLMSettings, listTypes: [ListType], items: [Item]
@@ -129,72 +104,108 @@ final class ImportViewModel {
             sampleNotes: promptBuilder.extractSampleNotes(from: items),
             customInstructions: settings.customSystemPromptInstructions
         )
+        storedSystemPrompt = systemPrompt
 
         do {
-            let messages: [[String: Any]]
-
-            switch pending {
-            case .image(let fileURL):
-                messages = try await buildImageMessages(
-                    fileURL: fileURL,
-                    settings: settings,
-                    systemPrompt: systemPrompt,
-                    promptBuilder: promptBuilder
-                )
-            case .webURL(let url):
-                statusMessage = "Fetching page content…"
-                let pageText = (try? await WebContentFetcher().fetchText(from: url.absoluteString)) ?? ""
-                let userMsg = promptBuilder.buildUserMessage(
-                    content: pageText,
-                    contentType: .url(url.absoluteString),
-                    additionalText: ""
-                )
-                messages = [
-                    ["role": "system", "content": systemPrompt],
-                    ["role": "user",   "content": userMsg],
-                ]
-            }
-
             statusMessage = "Connecting to AI…"
             let updateStatus: @Sendable (String) async -> Void = { [weak self] msg in
                 await MainActor.run { self?.statusMessage = msg }
             }
             try await llm.waitUntilReady(onProgress: updateStatus)
-            statusMessage = "Generating note…"
-            let response = try await llm.complete(messages: messages)
 
-            // Parse with one retry on failure
-            let result = parser.parse(response: response, listTypes: listTypes)
-            switch result {
-            case .success(let title, let type, let properties, let tags):
-                storedMessages = messages
-                storedLastResponse = response
-                generatedWithOnDevice = false
-                applyResult(title: title, type: type, properties: properties, tags: tags)
-            case .invalid(let reason):
-                statusMessage = "Refining response…"
-                var retryMsgs = messages
-                retryMsgs.append(["role": "assistant", "content": response])
-                retryMsgs.append(["role": "user", "content": promptBuilder.buildRetryMessage(reason: reason)])
-                let retryResponse = try await llm.complete(messages: retryMsgs)
-                switch parser.parse(response: retryResponse, listTypes: listTypes) {
-                case .success(let title, let type, let properties, let tags):
-                    storedMessages = retryMsgs
-                    storedLastResponse = retryResponse
+            var messages = try await buildLLMMessages(
+                settings: settings, promptBuilder: promptBuilder, systemPrompt: systemPrompt
+            )
+            let tools = promptBuilder.buildTools()
+            storedMessages = messages
+
+            statusMessage = "Generating notes…"
+            var iterations = 0
+            while iterations < 10 {
+                iterations += 1
+                let result = try await llm.completeStep(messages: messages, tools: tools)
+
+                switch result {
+                case .content(let text):
+                    storedMessages = messages
+                    storedLastResponse = text
                     generatedWithOnDevice = false
-                    applyResult(title: title, type: type, properties: properties, tags: tags)
-                case .invalid(let reason2):
-                    errorMessage = reason2
-                    step = .decision
+                    applyResponse(text, parser: parser, listTypes: listTypes)
+                    return
+
+                case .toolCalls(let assistantTurn, let calls):
+                    messages.append(assistantTurn)
+                    for call in calls {
+                        let output = await executeToolCall(call)
+                        messages.append(promptBuilder.buildToolResult(callID: call.id, content: output))
+                    }
                 }
             }
+            // Exhausted iterations — try plain completion with what we have
+            let fallback = try await llm.complete(messages: messages)
+            storedMessages = messages
+            storedLastResponse = fallback
+            generatedWithOnDevice = false
+            applyResponse(fallback, parser: parser, listTypes: listTypes)
         } catch {
             errorMessage = error.localizedDescription
-            step = .decision
         }
     }
 
-    // MARK: - Per-note regeneration with feedback
+    // MARK: - Tool execution
+
+    private func executeToolCall(_ call: LLMToolCall) async -> String {
+        switch call.name {
+        case "web_fetch":
+            let url = call.arguments["url"] as? String ?? ""
+            statusMessage = "Fetching \(URL(string: url)?.host ?? url)…"
+            return (try? await WebContentFetcher().fetchText(from: url))
+                ?? "Could not fetch content from \(url)."
+
+        case "ask_user":
+            let question = call.arguments["question"] as? String ?? "Please provide more information."
+            statusMessage = "Waiting for your input…"
+            return await waitForAnswer(question: question)
+
+        default:
+            return "Unknown tool: \(call.name)"
+        }
+    }
+
+    // MARK: - ask_user pause/resume
+
+    private func waitForAnswer(question: String) async -> String {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                pendingQuestion = question
+                questionContinuation = continuation
+            }
+        } onCancel: {
+            Task { @MainActor in
+                self.questionContinuation?.resume(returning: "[cancelled]")
+                self.questionContinuation = nil
+                self.pendingQuestion = nil
+            }
+        }
+    }
+
+    func submitAnswer() {
+        guard !questionAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let answer = questionAnswer.trimmingCharacters(in: .whitespacesAndNewlines)
+        questionContinuation?.resume(returning: answer)
+        questionContinuation = nil
+        pendingQuestion = nil
+        questionAnswer = ""
+    }
+
+    func cancelAnswer() {
+        questionContinuation?.resume(returning: "[User declined to answer]")
+        questionContinuation = nil
+        pendingQuestion = nil
+        questionAnswer = ""
+    }
+
+    // MARK: - Regeneration with feedback
 
     func regenerate(settings: LLMSettings, listTypes: [ListType]) async {
         let feedback = refinementText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -205,102 +216,148 @@ final class ImportViewModel {
         defer { isRegenerating = false }
 
         let parser = NoteResponseParser()
+        let promptBuilder = PromptBuilder()
 
         if #available(iOS 26, macOS 26, *), generatedWithOnDevice {
-            // Re-run using the same on-device engine, with prior attempt + feedback in user message
-            let enhancedUser = storedUserMessage
-                + "\n\nPrevious attempt:\n```yaml\n\(storedLastResponse)\n```"
+            let enhanced = (storedMessages.last?["content"] as? String ?? "")
+                + "\n\nPrevious result:\n```yaml\n\(storedLastResponse)\n```"
                 + "\n\nPlease revise with this feedback: \(feedback)"
             do {
                 let response = try await AppleIntelligenceService().complete(
-                    systemPrompt: storedSystemPrompt,
-                    userMessage: enhancedUser
+                    systemPrompt: storedSystemPrompt, userMessage: enhanced
                 )
-                switch parser.parse(response: response, listTypes: listTypes) {
-                case .success(let title, let type, let props, let tags):
-                    storedLastResponse = response
-                    refinementText = ""
-                    applyResult(title: title, type: type, properties: props, tags: tags)
-                case .invalid(let reason):
-                    errorMessage = reason
-                }
+                applyResponse(response, parser: parser, listTypes: listTypes)
+                refinementText = ""
             } catch {
                 errorMessage = error.localizedDescription
             }
         } else {
-            // Personal LLM: true multi-turn — extend the conversation chain
             var msgs = storedMessages
             msgs.append(["role": "assistant", "content": storedLastResponse])
-            msgs.append(["role": "user",      "content": feedback])
+            msgs.append(["role": "user", "content": feedback])
             let llm = LLMService(settings: settings)
+            let tools = promptBuilder.buildTools()
             do {
-                let response = try await llm.complete(messages: msgs)
-                switch parser.parse(response: response, listTypes: listTypes) {
-                case .success(let title, let type, let props, let tags):
-                    storedMessages = msgs
-                    storedLastResponse = response
-                    refinementText = ""
-                    applyResult(title: title, type: type, properties: props, tags: tags)
-                case .invalid(let reason):
-                    errorMessage = reason
+                // One refinement pass (no full tool loop for simplicity)
+                let result = try await llm.completeStep(messages: msgs, tools: tools)
+                let text: String
+                switch result {
+                case .content(let t): text = t
+                case .toolCalls: text = try await llm.complete(messages: msgs)
                 }
+                storedMessages = msgs
+                storedLastResponse = text
+                applyResponse(text, parser: parser, listTypes: listTypes)
+                refinementText = ""
             } catch {
                 errorMessage = error.localizedDescription
             }
         }
     }
 
-    // MARK: - Private helpers
+    // MARK: - Helpers
 
-    private func applyResult(title: String, type: String, properties: [String: PropertyValue], tags: [String]) {
-        editTitle = title
-        editType = type
-        editProperties = properties
-        editTags = tags.joined(separator: ", ")
-        step = .preview
+    private func applyResponse(_ response: String, parser: NoteResponseParser, listTypes: [ListType]) {
+        let parsed = parser.parseAll(response: response, listTypes: listTypes)
+        if parsed.isEmpty {
+            errorMessage = "No valid notes found in the AI response. Try refining or regenerating."
+        } else {
+            notes = parsed
+            step = .preview
+        }
     }
 
-    private func buildImageMessages(
-        fileURL: URL,
-        settings: LLMSettings,
-        systemPrompt: String,
-        promptBuilder: PromptBuilder
-    ) async throws -> [[String: Any]] {
-        if settings.imageProcessingMode == .base64 {
-            statusMessage = "Encoding image…"
-            let jpegData: Data
-            #if os(iOS)
-            guard let uiImage = UIImage(contentsOfFile: fileURL.path),
-                  let encoded = uiImage.jpegData(compressionQuality: 0.85) else {
-                throw LLMError.invalidResponse
+    /// Build a plain-text user message with all inputs pre-processed (for Apple Intelligence).
+    /// When fetchURLs is true, URLs are fetched upfront.
+    func buildTextUserMessage(promptBuilder: PromptBuilder, fetchURLs: Bool) async throws -> String {
+        var parts: [String] = ["Please create one or more notes from the following content."]
+
+        for (i, imageURL) in pending.imageURLs.enumerated() {
+            statusMessage = "Extracting text from image\(pending.imageURLs.count > 1 ? " \(i + 1)" : "")…"
+            let text = await extractText(from: imageURL)
+            if !text.isEmpty {
+                parts.append("--- Image \(i + 1) ---\n\(text)")
             }
-            jpegData = encoded
-            #else
-            guard let data = try? Data(contentsOf: fileURL) else {
-                throw LLMError.invalidResponse
-            }
-            jpegData = data
-            #endif
-            let base64 = "data:image/jpeg;base64," + jpegData.base64EncodedString()
-            let userText = promptBuilder.buildUserMessage(content: "", contentType: .image, additionalText: "")
-            return [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": [
-                    ["type": "image_url", "image_url": ["url": base64]],
-                    ["type": "text",      "text": userText],
-                ]],
-            ]
-        } else {
-            statusMessage = "Extracting text from image…"
-            let ocrText = await extractText(from: fileURL)
-            let userMsg = promptBuilder.buildUserMessage(
-                content: ocrText, contentType: .image, additionalText: ""
-            )
-            return [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user",   "content": userMsg],
-            ]
         }
+
+        for webURL in pending.webURLs {
+            if fetchURLs {
+                statusMessage = "Fetching \(webURL.host ?? webURL.absoluteString)…"
+                let text = (try? await WebContentFetcher().fetchText(from: webURL.absoluteString)) ?? ""
+                if !text.isEmpty {
+                    parts.append("--- Page: \(webURL.absoluteString) ---\n\(text)")
+                } else {
+                    parts.append("--- URL ---\n\(webURL.absoluteString)")
+                }
+            } else {
+                parts.append("--- URL ---\n\(webURL.absoluteString)")
+            }
+        }
+
+        for text in pending.texts {
+            parts.append("--- Text ---\n\(text)")
+        }
+
+        return parts.joined(separator: "\n\n")
+    }
+
+    /// Build the messages array for the personal LLM, handling base64 images vs OCR.
+    private func buildLLMMessages(
+        settings: LLMSettings,
+        promptBuilder: PromptBuilder,
+        systemPrompt: String
+    ) async throws -> [[String: Any]] {
+        var contentBlocks: [[String: Any]] = []
+        var textParts: [String] = ["Please create one or more notes from the following content."]
+
+        for (i, imageURL) in pending.imageURLs.enumerated() {
+            if settings.imageProcessingMode == .base64 {
+                statusMessage = "Encoding image\(pending.imageURLs.count > 1 ? " \(i + 1)" : "")…"
+                if let base64 = encodeImageBase64(at: imageURL) {
+                    contentBlocks.append([
+                        "type": "image_url",
+                        "image_url": ["url": base64],
+                    ])
+                }
+            } else {
+                statusMessage = "Extracting text from image\(pending.imageURLs.count > 1 ? " \(i + 1)" : "")…"
+                let text = await extractText(from: imageURL)
+                if !text.isEmpty {
+                    textParts.append("--- Image \(i + 1) ---\n\(text)")
+                }
+            }
+        }
+
+        // Include URLs as text in the message — the AI can call web_fetch for details
+        for webURL in pending.webURLs {
+            textParts.append("--- URL ---\n\(webURL.absoluteString)")
+        }
+
+        for text in pending.texts {
+            textParts.append("--- Text ---\n\(text)")
+        }
+
+        let textBlock: [String: Any] = ["type": "text", "text": textParts.joined(separator: "\n\n")]
+
+        let userContent: Any = contentBlocks.isEmpty
+            ? textParts.joined(separator: "\n\n")
+            : contentBlocks + [textBlock]
+
+        return [
+            ["role": "system", "content": systemPrompt],
+            ["role": "user",   "content": userContent],
+        ]
+    }
+
+    private func encodeImageBase64(at fileURL: URL) -> String? {
+        #if os(iOS)
+        guard let uiImage = UIImage(contentsOfFile: fileURL.path),
+              let data = uiImage.jpegData(compressionQuality: 0.85) else { return nil }
+        return "data:image/jpeg;base64," + data.base64EncodedString()
+        #else
+        guard let data = try? Data(contentsOf: fileURL) else { return nil }
+        return "data:image/jpeg;base64," + data.base64EncodedString()
+        #endif
     }
 
     private func extractText(from fileURL: URL) async -> String {
@@ -324,7 +381,6 @@ struct ImportView: View {
     let pending: PendingImport
     @Environment(AppState.self) private var appState
     @State private var viewModel: ImportViewModel
-    @State private var showManualEntry = false
     @Environment(\.dismiss) private var dismiss
 
     init(pending: PendingImport) {
@@ -336,7 +392,6 @@ struct ImportView: View {
         NavigationStack {
             Group {
                 switch viewModel.step {
-                case .decision:   decisionView
                 case .processing: processingView
                 case .preview:    previewView
                 }
@@ -346,92 +401,25 @@ struct ImportView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        viewModel.cancelAnswer()
                         appState.pendingImport = nil
                         dismiss()
                     }
                 }
             }
         }
-        .sheet(isPresented: $showManualEntry) {
-            CreateItemView()
-                .environment(appState)
-                .onDisappear { appState.pendingImport = nil }
+        .task {
+            await viewModel.processWithAI(
+                settings: appState.llmSettings,
+                listTypes: appState.listTypes,
+                items: appState.items
+            )
         }
-    }
-
-    // MARK: Decision
-
-    private var decisionView: some View {
-        VStack(spacing: 24) {
-            contentPreview
-                .padding(.top)
-
-            if let error = viewModel.errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.footnote)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-
-            VStack(spacing: 12) {
-                Button {
-                    Task {
-                        await viewModel.processWithAI(
-                            settings: appState.llmSettings,
-                            listTypes: appState.listTypes,
-                            items: appState.items
-                        )
-                    }
-                } label: {
-                    Label("Process with AI", systemImage: "sparkles")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal)
-
-                Button {
-                    showManualEntry = true
-                } label: {
-                    Label("Manual Entry", systemImage: "pencil")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .padding(.horizontal)
-            }
-
-            Spacer()
-        }
-    }
-
-    @ViewBuilder
-    private var contentPreview: some View {
-        switch pending {
-        case .image(let url):
-            AsyncImage(url: url) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFit().cornerRadius(8)
-                } else {
-                    Image(systemName: "photo")
-                        .font(.system(size: 60))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxHeight: 220)
-            .padding(.horizontal)
-
-        case .webURL(let url):
-            VStack(spacing: 8) {
-                Image(systemName: "link")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.secondary)
-                Text(url.absoluteString)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
+        .sheet(isPresented: Binding(
+            get: { viewModel.pendingQuestion != nil },
+            set: { if !$0 { viewModel.cancelAnswer() } }
+        )) {
+            askUserSheet
         }
     }
 
@@ -440,68 +428,82 @@ struct ImportView: View {
     private var processingView: some View {
         VStack(spacing: 20) {
             Spacer()
-            ProgressView()
-                .scaleEffect(1.5)
+            ProgressView().scaleEffect(1.5)
             Text(viewModel.statusMessage)
                 .foregroundStyle(.secondary)
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.footnote)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                Button("Retry") {
+                    Task {
+                        await viewModel.processWithAI(
+                            settings: appState.llmSettings,
+                            listTypes: appState.listTypes,
+                            items: appState.items
+                        )
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
             Spacer()
         }
+        .padding()
+    }
+
+    // MARK: ask_user sheet
+
+    private var askUserSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(viewModel.pendingQuestion ?? "")
+                        .font(.body)
+                } header: {
+                    Text("AI needs your input")
+                }
+                Section {
+                    TextField("Your answer…", text: $viewModel.questionAnswer, axis: .vertical)
+                        .lineLimit(3...)
+                }
+            }
+            .navigationTitle("Question")
+            .navigationBarTitleInline()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Skip") { viewModel.cancelAnswer() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Submit") { viewModel.submitAnswer() }
+                        .fontWeight(.semibold)
+                        .disabled(viewModel.questionAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     // MARK: Preview
 
-    private var previewMatchedListType: ListType? {
-        appState.listTypes.first { $0.name.lowercased() == viewModel.editType.lowercased() }
-    }
-
-    private var previewOrderedPropertyKeys: [String] {
-        let schemaKeys = previewMatchedListType?.fields
-            .filter { $0.name.lowercased() != "title" }
-            .map { $0.name } ?? []
-        let extraKeys = viewModel.editProperties.keys
-            .filter { key in !schemaKeys.contains { $0.lowercased() == key.lowercased() } }
-            .sorted()
-        return schemaKeys + extraKeys
-    }
+    private var includedCount: Int { viewModel.notes.filter(\.isIncluded).count }
 
     private var previewView: some View {
-        Form {
-            Section("Type") {
-                Picker("Type", selection: $viewModel.editType) {
-                    ForEach(appState.listTypes.map { $0.name }, id: \.self) { name in
-                        Text(name.capitalized).tag(name.lowercased())
-                    }
-                }
-                .pickerStyle(.menu)
+        List {
+            ForEach($viewModel.notes) { $note in
+                NoteCardSection(note: $note, listTypes: appState.listTypes)
             }
 
-            Section("Title") {
-                TextField("Title", text: $viewModel.editTitle)
-            }
-
-            Section("Tags") {
-                TextField("tag1, tag2", text: $viewModel.editTags)
-                    .noAutocapitalization()
-            }
-
-            if !viewModel.editProperties.isEmpty {
-                Section("Details") {
-                    ForEach(previewOrderedPropertyKeys, id: \.self) { key in
-                        propertyEditRow(key: key)
-                    }
-                }
-            }
-
-            if let regenerateError = viewModel.errorMessage {
+            if let error = viewModel.errorMessage {
                 Section {
-                    Text(regenerateError)
-                        .foregroundStyle(.red)
-                        .font(.footnote)
+                    Text(error).foregroundStyle(.red).font(.footnote)
                 }
             }
+
             Section {
                 TextField(
-                    "e.g. \"This is actually a movie\"",
+                    "e.g. \"These are restaurants, not cafés\"",
                     text: $viewModel.refinementText,
                     axis: .vertical
                 )
@@ -517,7 +519,7 @@ struct ImportView: View {
                     if viewModel.isRegenerating {
                         ProgressView().frame(maxWidth: .infinity)
                     } else {
-                        Label("Regenerate", systemImage: "arrow.clockwise.sparkles")
+                        Label("Regenerate All", systemImage: "arrow.clockwise.sparkles")
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -529,42 +531,124 @@ struct ImportView: View {
             } header: {
                 Text("Refine")
             } footer: {
-                Text("Optional: describe what to change and regenerate the note.")
+                Text("Describe what to change and regenerate all notes.")
             }
         }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    Task { await saveNote() }
+                Button("Save \(includedCount == 1 ? "1 Note" : "\(includedCount) Notes")") {
+                    Task { await saveNotes() }
                 }
-                .disabled(viewModel.editTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(includedCount == 0)
+            }
+        }
+    }
+
+    // MARK: Save
+
+    private func saveNotes() async {
+        for note in viewModel.notes where note.isIncluded {
+            let tags = note.tags
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            let title = note.title.trimmingCharacters(in: .whitespaces)
+            guard !title.isEmpty else { continue }
+
+            if note.type == "todo" {
+                await appState.createTodo(title: title, tags: tags, properties: note.properties)
+            } else {
+                await appState.createYAMLItem(
+                    type: note.type, title: title, tags: tags, properties: note.properties
+                )
+            }
+        }
+        appState.pendingImport = nil
+        dismiss()
+    }
+}
+
+// MARK: - Note Card Section
+
+private struct NoteCardSection: View {
+    @Binding var note: NoteEdit
+    let listTypes: [ListType]
+
+    private var matchedListType: ListType? {
+        listTypes.first { $0.name.lowercased() == note.type.lowercased() }
+    }
+
+    private var orderedPropertyKeys: [String] {
+        let schemaKeys = matchedListType?.fields
+            .filter { $0.name.lowercased() != "title" }
+            .map { $0.name } ?? []
+        let extraKeys = note.properties.keys
+            .filter { key in !schemaKeys.contains { $0.lowercased() == key.lowercased() } }
+            .sorted()
+        return schemaKeys.filter { note.properties[$0] != nil } + extraKeys
+    }
+
+    var body: some View {
+        Section {
+            // Include toggle
+            Toggle(isOn: $note.isIncluded) {
+                Text(note.isIncluded ? "Include" : "Skip")
+                    .foregroundStyle(note.isIncluded ? .primary : .secondary)
+            }
+            .tint(.accentColor)
+
+            // Type picker
+            Picker("Type", selection: $note.type) {
+                ForEach(listTypes.map { $0.name }, id: \.self) { name in
+                    Text(name.capitalized).tag(name.lowercased())
+                }
+            }
+            .pickerStyle(.menu)
+
+            // Title
+            TextField("Title", text: $note.title)
+                .fontWeight(.semibold)
+
+            // Tags
+            TextField("tag1, tag2", text: $note.tags)
+                .noAutocapitalization()
+                .foregroundStyle(.secondary)
+                .font(.subheadline)
+        } header: {
+            Text(note.type.capitalized)
+        }
+
+        if !orderedPropertyKeys.isEmpty {
+            Section {
+                ForEach(orderedPropertyKeys, id: \.self) { key in
+                    propertyRow(key: key)
+                }
             }
         }
     }
 
     @ViewBuilder
-    private func propertyEditRow(key: String) -> some View {
+    private func propertyRow(key: String) -> some View {
         let label = key.replacingOccurrences(of: "_", with: " ").capitalized
-        switch viewModel.editProperties[key] {
+        switch note.properties[key] {
         case .text:
             if key.lowercased() == "priority" {
                 Picker(label, selection: Binding<String>(
-                    get: { if case .text(let t) = viewModel.editProperties[key] { return t }; return "" },
-                    set: { viewModel.editProperties[key] = .text($0) }
+                    get: { if case .text(let t) = note.properties[key] { return t }; return "" },
+                    set: { note.properties[key] = .text($0) }
                 )) {
                     Text("None").tag("")
                     Text("🔴 High").tag("high")
                     Text("🟠 Medium").tag("medium")
                     Text("🔵 Low").tag("low")
-                }
-                .pickerStyle(.menu)
+                }.pickerStyle(.menu)
             } else {
                 HStack {
                     Text(label)
                     Spacer()
                     TextField("Optional", text: Binding<String>(
-                        get: { if case .text(let t) = viewModel.editProperties[key] { return t }; return "" },
-                        set: { viewModel.editProperties[key] = .text($0) }
+                        get: { if case .text(let t) = note.properties[key] { return t }; return "" },
+                        set: { note.properties[key] = .text($0) }
                     ))
                     .multilineTextAlignment(.trailing)
                     .foregroundStyle(.secondary)
@@ -576,12 +660,12 @@ struct ImportView: View {
                 Spacer()
                 TextField("Optional", text: Binding<String>(
                     get: {
-                        if case .number(let n) = viewModel.editProperties[key] {
+                        if case .number(let n) = note.properties[key] {
                             return n.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(n))" : "\(n)"
                         }
                         return ""
                     },
-                    set: { if let d = Double($0) { viewModel.editProperties[key] = .number(d) } }
+                    set: { if let d = Double($0) { note.properties[key] = .number(d) } }
                 ))
                 .multilineTextAlignment(.trailing)
                 .foregroundStyle(.secondary)
@@ -591,40 +675,16 @@ struct ImportView: View {
             }
         case .date:
             DatePicker(label, selection: Binding<Date>(
-                get: { if case .date(let d) = viewModel.editProperties[key] { return d }; return Date() },
-                set: { viewModel.editProperties[key] = .date($0) }
+                get: { if case .date(let d) = note.properties[key] { return d }; return Date() },
+                set: { note.properties[key] = .date($0) }
             ), displayedComponents: .date)
         case .bool:
             Toggle(label, isOn: Binding<Bool>(
-                get: { if case .bool(let b) = viewModel.editProperties[key] { return b }; return false },
-                set: { viewModel.editProperties[key] = .bool($0) }
+                get: { if case .bool(let b) = note.properties[key] { return b }; return false },
+                set: { note.properties[key] = .bool($0) }
             ))
         case .none:
             EmptyView()
         }
-    }
-
-    // MARK: Save
-
-    private func saveNote() async {
-        let tags = viewModel.editTags
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        let title = viewModel.editTitle.trimmingCharacters(in: .whitespaces)
-
-        if viewModel.editType == "todo" {
-            await appState.createTodo(title: title, tags: tags, properties: viewModel.editProperties)
-        } else {
-            await appState.createYAMLItem(
-                type: viewModel.editType,
-                title: title,
-                tags: tags,
-                properties: viewModel.editProperties
-            )
-        }
-
-        appState.pendingImport = nil
-        dismiss()
     }
 }
