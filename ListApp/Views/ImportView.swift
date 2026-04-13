@@ -450,27 +450,48 @@ struct ImportView: View {
 
     // MARK: Preview
 
+    private var previewMatchedListType: ListType? {
+        appState.listTypes.first { $0.name.lowercased() == viewModel.editType.lowercased() }
+    }
+
+    private var previewOrderedPropertyKeys: [String] {
+        let schemaKeys = previewMatchedListType?.fields
+            .filter { $0.name.lowercased() != "title" }
+            .map { $0.name } ?? []
+        let extraKeys = viewModel.editProperties.keys
+            .filter { key in !schemaKeys.contains { $0.lowercased() == key.lowercased() } }
+            .sorted()
+        return schemaKeys + extraKeys
+    }
+
     private var previewView: some View {
         Form {
+            Section("Type") {
+                Picker("Type", selection: $viewModel.editType) {
+                    ForEach(appState.listTypes.map { $0.name }, id: \.self) { name in
+                        Text(name.capitalized).tag(name.lowercased())
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+
             Section("Title") {
                 TextField("Title", text: $viewModel.editTitle)
             }
+
             Section("Tags") {
                 TextField("tag1, tag2", text: $viewModel.editTags)
                     .noAutocapitalization()
             }
+
             if !viewModel.editProperties.isEmpty {
                 Section("Details") {
-                    ForEach(viewModel.editProperties.keys.sorted(), id: \.self) { key in
-                        HStack {
-                            Text(key.capitalized)
-                            Spacer()
-                            Text(propertyDisplayString(viewModel.editProperties[key]))
-                                .foregroundStyle(.secondary)
-                        }
+                    ForEach(previewOrderedPropertyKeys, id: \.self) { key in
+                        propertyEditRow(key: key)
                     }
                 }
             }
+
             if let regenerateError = viewModel.errorMessage {
                 Section {
                     Text(regenerateError)
@@ -521,17 +542,65 @@ struct ImportView: View {
         }
     }
 
-    private func propertyDisplayString(_ value: PropertyValue?) -> String {
-        guard let value else { return "" }
-        switch value {
-        case .text(let t):   return t
-        case .number(let n): return n.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(n))" : "\(n)"
-        case .date(let d):
-            let fmt = DateFormatter()
-            fmt.dateStyle = .medium
-            fmt.timeStyle = .none
-            return fmt.string(from: d)
-        case .bool(let b):   return b ? "Yes" : "No"
+    @ViewBuilder
+    private func propertyEditRow(key: String) -> some View {
+        let label = key.replacingOccurrences(of: "_", with: " ").capitalized
+        switch viewModel.editProperties[key] {
+        case .text:
+            if key.lowercased() == "priority" {
+                Picker(label, selection: Binding<String>(
+                    get: { if case .text(let t) = viewModel.editProperties[key] { return t }; return "" },
+                    set: { viewModel.editProperties[key] = .text($0) }
+                )) {
+                    Text("None").tag("")
+                    Text("🔴 High").tag("high")
+                    Text("🟠 Medium").tag("medium")
+                    Text("🔵 Low").tag("low")
+                }
+                .pickerStyle(.menu)
+            } else {
+                HStack {
+                    Text(label)
+                    Spacer()
+                    TextField("Optional", text: Binding<String>(
+                        get: { if case .text(let t) = viewModel.editProperties[key] { return t }; return "" },
+                        set: { viewModel.editProperties[key] = .text($0) }
+                    ))
+                    .multilineTextAlignment(.trailing)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        case .number:
+            HStack {
+                Text(label)
+                Spacer()
+                TextField("Optional", text: Binding<String>(
+                    get: {
+                        if case .number(let n) = viewModel.editProperties[key] {
+                            return n.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(n))" : "\(n)"
+                        }
+                        return ""
+                    },
+                    set: { if let d = Double($0) { viewModel.editProperties[key] = .number(d) } }
+                ))
+                .multilineTextAlignment(.trailing)
+                .foregroundStyle(.secondary)
+                #if os(iOS)
+                .keyboardType(.decimalPad)
+                #endif
+            }
+        case .date:
+            DatePicker(label, selection: Binding<Date>(
+                get: { if case .date(let d) = viewModel.editProperties[key] { return d }; return Date() },
+                set: { viewModel.editProperties[key] = .date($0) }
+            ), displayedComponents: .date)
+        case .bool:
+            Toggle(label, isOn: Binding<Bool>(
+                get: { if case .bool(let b) = viewModel.editProperties[key] { return b }; return false },
+                set: { viewModel.editProperties[key] = .bool($0) }
+            ))
+        case .none:
+            EmptyView()
         }
     }
 

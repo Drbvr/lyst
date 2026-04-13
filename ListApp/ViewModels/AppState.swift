@@ -197,7 +197,7 @@ class AppState {
     }
 
     var itemTypeNames: [String] {
-        Array(Set(items.map { $0.type })).sorted()
+        Array(Set(items.map { $0.type.lowercased() })).sorted()
     }
 
     // MARK: - Actions
