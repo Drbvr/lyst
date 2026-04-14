@@ -3,16 +3,16 @@ import Core
 
 // MARK: - Pending Import
 
-enum PendingImport: Identifiable {
-    case image(URL)
-    case webURL(URL)
+struct PendingImport: Identifiable {
+    var id = UUID()
+    var texts: [String] = []
+    var imageURLs: [URL] = []
+    var webURLs: [URL] = []
 
-    var id: String {
-        switch self {
-        case .image(let url):  return "image:" + url.absoluteString
-        case .webURL(let url): return "url:" + url.absoluteString
-        }
-    }
+    init() {}
+    init(text: String)   { texts     = [text] }
+    init(image: URL)     { imageURLs = [image] }
+    init(webURL: URL)    { webURLs   = [webURL] }
 }
 
 // MARK: - AppState
@@ -197,7 +197,7 @@ class AppState {
     }
 
     var itemTypeNames: [String] {
-        Array(Set(items.map { $0.type })).sorted()
+        Array(Set(items.map { $0.type.lowercased() })).sorted()
     }
 
     // MARK: - Actions

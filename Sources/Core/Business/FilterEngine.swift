@@ -23,7 +23,8 @@ public class ItemFilterEngine: FilterEngine {
 
         // Apply item type filter
         if let types = filters.itemTypes, !types.isEmpty {
-            filtered = filtered.filter { types.contains($0.type) }
+            let normalizedTypes = Set(types.map { $0.lowercased() })
+            filtered = filtered.filter { normalizedTypes.contains($0.type.lowercased()) }
         }
 
         // Apply completion status filter

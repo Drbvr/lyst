@@ -9,6 +9,7 @@ struct CreateItemView: View {
     @State private var selectedType: ListType? = nil
     @State private var showNoVaultAlert = false
     @State private var showURLInput = false
+    @State private var showTextInput = false
     @State private var pendingImportOnDismiss: PendingImport? = nil
     @State private var selectedPhoto: PhotosPickerItem? = nil
     @State private var isLoadingPhoto = false
@@ -30,7 +31,14 @@ struct CreateItemView: View {
             if pendingImportOnDismiss != nil { dismiss() }
         }) {
             URLInputView { url in
-                pendingImportOnDismiss = .webURL(url)
+                pendingImportOnDismiss = PendingImport(webURL: url)
+            }
+        }
+        .sheet(isPresented: $showTextInput, onDismiss: {
+            if pendingImportOnDismiss != nil { dismiss() }
+        }) {
+            TextImportView { text in
+                pendingImportOnDismiss = PendingImport(text: text)
             }
         }
         .onChange(of: selectedPhoto) { _, newItem in
@@ -55,7 +63,7 @@ struct CreateItemView: View {
             .appendingPathComponent(UUID().uuidString + ".jpg")
         guard (try? data.write(to: tempURL)) != nil else { return }
         await MainActor.run {
-            pendingImportOnDismiss = .image(tempURL)
+            pendingImportOnDismiss = PendingImport(image: tempURL)
             dismiss()
         }
     }
@@ -97,6 +105,18 @@ struct CreateItemView: View {
                             .foregroundStyle(.primary)
                     }
                 }
+
+                Button {
+                    if appState.currentVaultURL == nil {
+                        showNoVaultAlert = true
+                    } else {
+                        showTextInput = true
+                    }
+                } label: {
+                    Label("From Text", systemImage: "text.alignleft")
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
             } header: {
                 Label("Generate with AI", systemImage: "sparkles")
             }
@@ -384,5 +404,43 @@ private struct URLInputView: View {
         }
         onImport(url)
         dismiss()
+    }
+}
+
+// MARK: - Text Import
+
+private struct TextImportView: View {
+    let onImport: (String) -> Void
+    @State private var text = ""
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextEditor(text: $text)
+                        .frame(minHeight: 200)
+                } header: {
+                    Text("Paste or type your content")
+                } footer: {
+                    Text("The AI will read this text and create notes from it.")
+                }
+            }
+            .navigationTitle("Import from Text")
+            .navigationBarTitleInline()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Import") {
+                        onImport(text.trimmingCharacters(in: .whitespacesAndNewlines))
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
     }
 }

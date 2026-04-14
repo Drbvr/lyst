@@ -22,11 +22,11 @@ struct ListAppApp: App {
                         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                               let webURLString = components.queryItems?.first(where: { $0.name == "url" })?.value,
                               let webURL = URL(string: webURLString) else { return }
-                        appState.pendingImport = .webURL(webURL)
+                        appState.pendingImport = PendingImport(webURL: webURL)
                     } else if url.isFileURL {
-                        appState.pendingImport = .image(url)
+                        appState.pendingImport = PendingImport(image: url)
                     } else if url.scheme == "https" || url.scheme == "http" {
-                        appState.pendingImport = .webURL(url)
+                        appState.pendingImport = PendingImport(webURL: url)
                     }
                 }
                 .sheet(item: Bindable(appState).pendingImport) { pending in

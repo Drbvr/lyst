@@ -232,7 +232,7 @@ public class ObsidianTodoParser: MarkdownParser {
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.hasPrefix("type:") {
-                type = trimmed.dropFirst("type:".count).trimmingCharacters(in: .whitespaces)
+                type = trimmed.dropFirst("type:".count).trimmingCharacters(in: .whitespaces).lowercased()
             } else if trimmed.hasPrefix("title:") {
                 title = trimmed.dropFirst("title:".count).trimmingCharacters(in: .whitespaces)
             } else if trimmed.hasPrefix("tags:") {
