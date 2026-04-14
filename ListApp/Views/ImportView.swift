@@ -84,6 +84,8 @@ final class ImportViewModel {
                         : nil
                 }
             )
+            storedLastResponse = response
+            storedMessages = [["role": "user", "content": userMessage]]
             applyResponse(response, parser: parser, listTypes: listTypes)
             generatedWithOnDevice = true
         } catch {
@@ -655,24 +657,7 @@ private struct NoteCardSection: View {
                 }
             }
         case .number:
-            HStack {
-                Text(label)
-                Spacer()
-                TextField("Optional", text: Binding<String>(
-                    get: {
-                        if case .number(let n) = note.properties[key] {
-                            return n.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(n))" : "\(n)"
-                        }
-                        return ""
-                    },
-                    set: { if let d = Double($0) { note.properties[key] = .number(d) } }
-                ))
-                .multilineTextAlignment(.trailing)
-                .foregroundStyle(.secondary)
-                #if os(iOS)
-                .keyboardType(.decimalPad)
-                #endif
-            }
+            NumberFieldRow(label: label, key: key, properties: $note.properties)
         case .date:
             DatePicker(label, selection: Binding<Date>(
                 get: { if case .date(let d) = note.properties[key] { return d }; return Date() },
@@ -685,6 +670,41 @@ private struct NoteCardSection: View {
             ))
         case .none:
             EmptyView()
+        }
+    }
+}
+
+// MARK: - Number Field Row
+
+private struct NumberFieldRow: View {
+    let label: String
+    let key: String
+    @Binding var properties: [String: PropertyValue]
+
+    @State private var text: String = ""
+
+    var body: some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField("Optional", text: $text)
+                .multilineTextAlignment(.trailing)
+                .foregroundStyle(.secondary)
+                #if os(iOS)
+                .keyboardType(.decimalPad)
+                #endif
+        }
+        .onAppear {
+            if case .number(let n) = properties[key] {
+                text = n.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(n))" : "\(n)"
+            }
+        }
+        .onChange(of: text) { _, newValue in
+            if newValue.isEmpty {
+                properties.removeValue(forKey: key)
+            } else if let d = Double(newValue) {
+                properties[key] = .number(d)
+            }
         }
     }
 }

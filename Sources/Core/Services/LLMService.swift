@@ -227,6 +227,7 @@ public actor LLMService {
                 else { return nil }
                 return LLMToolCall(id: id, name: name, arguments: args)
             }
+            guard !calls.isEmpty else { throw LLMError.invalidResponse }
             return .toolCalls(assistantTurn: message, calls: calls)
         }
 

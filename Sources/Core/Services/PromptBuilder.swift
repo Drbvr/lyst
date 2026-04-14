@@ -48,7 +48,8 @@ public struct PromptBuilder {
 
         lines.append("## Output Format")
         lines.append("")
-        lines.append("Return ONLY a single YAML frontmatter block inside triple-backtick yaml fences:")
+        lines.append("Return one or more YAML frontmatter blocks inside triple-backtick yaml fences.")
+        lines.append("Each note is one block:")
         lines.append("```yaml")
         lines.append("---")
         lines.append("type: <note_type_lowercase>")
@@ -64,7 +65,7 @@ public struct PromptBuilder {
         lines.append("- Use ISO 8601 dates (YYYY-MM-DD) for date fields")
         lines.append("- Use plain numbers (not strings) for number fields")
         lines.append("- Keep tags short and relevant (optional)")
-        lines.append("- Return ONLY the ```yaml block — no other text, explanation, or markdown")
+        lines.append("- Return ONLY ```yaml blocks — no other text, explanation, or markdown")
         lines.append("")
         lines.append("## Batching")
         lines.append("")
