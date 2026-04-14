@@ -57,7 +57,7 @@ final class ImportViewModel {
         }
     }
 
-    // MARK: - Apple Intelligence (no tool calling; pre-process everything)
+    // MARK: - Apple Intelligence
 
     @available(iOS 26.0, macOS 26.0, *)
     private func processWithAppleIntelligence(
@@ -73,11 +73,15 @@ final class ImportViewModel {
         storedSystemPrompt = systemPrompt
 
         do {
-            let userMessage = try await buildTextUserMessage(promptBuilder: promptBuilder, fetchURLs: true)
+            // Pass URLs as-is; the web_fetch tool fetches them on demand.
+            let userMessage = try await buildTextUserMessage(promptBuilder: promptBuilder, fetchURLs: false)
             let service = AppleIntelligenceService()
             let response = try await service.complete(
                 systemPrompt: systemPrompt,
                 userMessage: userMessage,
+                onAsk: { [weak self] question in
+                    await self?.waitForAnswer(question: question) ?? "[cancelled]"
+                },
                 retryPrompt: { [parser, listTypes] first in
                     parser.parseAll(response: first, listTypes: listTypes).isEmpty
                         ? promptBuilder.buildRetryMessage(reason: "No valid ```yaml blocks found.")
@@ -226,7 +230,11 @@ final class ImportViewModel {
                 + "\n\nPlease revise with this feedback: \(feedback)"
             do {
                 let response = try await AppleIntelligenceService().complete(
-                    systemPrompt: storedSystemPrompt, userMessage: enhanced
+                    systemPrompt: storedSystemPrompt,
+                    userMessage: enhanced,
+                    onAsk: { [weak self] question in
+                        await self?.waitForAnswer(question: question) ?? "[cancelled]"
+                    }
                 )
                 applyResponse(response, parser: parser, listTypes: listTypes)
                 refinementText = ""
