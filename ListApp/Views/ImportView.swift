@@ -160,13 +160,27 @@ final class ImportViewModel {
 
     // MARK: - Tool execution
 
+    private func validatedWebFetchURL(from candidate: String) -> URL? {
+        guard
+            let components = URLComponents(string: candidate),
+            let scheme = components.scheme?.lowercased(),
+            ["http", "https"].contains(scheme),
+            let host = components.host?.lowercased(), !host.isEmpty,
+            !["localhost", "127.0.0.1", "::1"].contains(host)
+        else { return nil }
+        return components.url
+    }
+
     private func executeToolCall(_ call: LLMToolCall) async -> String {
         switch call.name {
         case "web_fetch":
-            let url = call.arguments["url"] as? String ?? ""
-            statusMessage = "Fetching \(URL(string: url)?.host ?? url)…"
-            return (try? await WebContentFetcher().fetchText(from: url))
-                ?? "Could not fetch content from \(url)."
+            let raw = call.arguments["url"] as? String ?? ""
+            guard let validatedURL = validatedWebFetchURL(from: raw) else {
+                return "Could not fetch: only http/https URLs with a public host are supported."
+            }
+            statusMessage = "Fetching \(validatedURL.host ?? validatedURL.absoluteString)…"
+            return (try? await WebContentFetcher().fetchText(from: validatedURL.absoluteString))
+                ?? "Could not fetch content from \(validatedURL.absoluteString)."
 
         case "ask_user":
             let question = call.arguments["question"] as? String ?? "Please provide more information."
@@ -246,15 +260,10 @@ final class ImportViewModel {
             msgs.append(["role": "assistant", "content": storedLastResponse])
             msgs.append(["role": "user", "content": feedback])
             let llm = LLMService(settings: settings)
-            let tools = promptBuilder.buildTools()
             do {
-                // One refinement pass (no full tool loop for simplicity)
-                let result = try await llm.completeStep(messages: msgs, tools: tools)
-                let text: String
-                switch result {
-                case .content(let t): text = t
-                case .toolCalls: text = try await llm.complete(messages: msgs)
-                }
+                // Plain completion for refinement — content is already in context,
+                // no need for a tool loop.
+                let text = try await llm.complete(messages: msgs)
                 storedMessages = msgs
                 storedLastResponse = text
                 applyResponse(text, parser: parser, listTypes: listTypes)
@@ -498,6 +507,9 @@ struct ImportView: View {
     // MARK: Preview
 
     private var includedCount: Int { viewModel.notes.filter(\.isIncluded).count }
+    private var canSave: Bool {
+        viewModel.notes.contains { $0.isIncluded && !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
 
     private var previewView: some View {
         List {
@@ -549,7 +561,7 @@ struct ImportView: View {
                 Button("Save \(includedCount == 1 ? "1 Note" : "\(includedCount) Notes")") {
                     Task { await saveNotes() }
                 }
-                .disabled(includedCount == 0)
+                .disabled(!canSave)
             }
         }
     }

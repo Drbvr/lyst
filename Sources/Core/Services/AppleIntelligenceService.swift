@@ -26,7 +26,15 @@ private struct WebFetchTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        (try? await WebContentFetcher().fetchText(from: arguments.url))
+        guard
+            let components = URLComponents(string: arguments.url),
+            let scheme = components.scheme?.lowercased(),
+            scheme == "http" || scheme == "https",
+            let host = components.host, !host.isEmpty
+        else {
+            return "Only http and https URLs are supported."
+        }
+        return (try? await WebContentFetcher().fetchText(from: arguments.url))
             ?? "Could not fetch content from \(arguments.url)."
     }
 }
