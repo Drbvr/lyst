@@ -136,6 +136,7 @@ struct CreateItemView: View {
                     }
                 }
 
+                #if os(iOS)
                 Button {
                     if appState.currentVaultURL == nil {
                         showNoVaultAlert = true
@@ -148,6 +149,7 @@ struct CreateItemView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!clipboardHasImage || appState.currentVaultURL == nil)
+                #endif
 
                 Button {
                     if appState.currentVaultURL == nil {
@@ -217,6 +219,14 @@ struct CreateItemView: View {
             clipboardHasImage = UIPasteboard.general.hasImages
             #endif
         }
+        #if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: UIPasteboard.changedNotification)) { _ in
+            clipboardHasImage = UIPasteboard.general.hasImages
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            clipboardHasImage = UIPasteboard.general.hasImages
+        }
+        #endif
     }
 
     // MARK: - Step 2: Fields form
