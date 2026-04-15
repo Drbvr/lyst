@@ -13,9 +13,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROJECT_FILE="$REPO_ROOT/ListApp.xcodeproj/project.pbxproj"
 
-# Directories that belong to the ListApp app target (not Core framework)
+# Directories whose Swift files must all be registered in project.pbxproj.
+# Sources/Core is a native Xcode framework target (not SPM auto-discovery),
+# so new files there also require explicit registration.
 APP_DIRS=(
   "$REPO_ROOT/ListApp"
+  "$REPO_ROOT/Sources/Core"
 )
 
 MISSING=()
