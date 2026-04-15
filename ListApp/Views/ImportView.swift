@@ -2,6 +2,15 @@ import SwiftUI
 import Core
 import Vision
 
+// MARK: - Developer Log
+
+struct DevLogEntry: Identifiable {
+    let id = UUID()
+    let role: String     // "system", "user", "assistant", "tool_call", "tool_result", "error"
+    let content: String
+    let timestamp = Date()
+}
+
 // MARK: - ViewModel
 
 @Observable
@@ -25,6 +34,10 @@ final class ImportViewModel {
     var refinementText: String = ""
     var isRegenerating: Bool = false
 
+    // Developer mode log
+    var devLog: [DevLogEntry] = []
+    var isDevMode: Bool = false
+
     // Stored conversation for regeneration
     private var storedSystemPrompt: String = ""
     private var storedMessages: [[String: Any]] = []
@@ -37,11 +50,18 @@ final class ImportViewModel {
         self.pending = pending
     }
 
+    private func log(_ role: String, _ content: String) {
+        guard isDevMode else { return }
+        devLog.append(DevLogEntry(role: role, content: content))
+    }
+
     // MARK: - Entry point
 
     func processWithAI(settings: LLMSettings, listTypes: [ListType], items: [Item]) async {
         step = .processing
         errorMessage = nil
+        isDevMode = settings.developerMode
+        devLog = []
 
         if #available(iOS 26, macOS 26, *), settings.processingMode == .onDevice {
             if AppleIntelligenceService.isAvailable {
@@ -71,10 +91,12 @@ final class ImportViewModel {
             customInstructions: customInstructions
         )
         storedSystemPrompt = systemPrompt
+        log("system", systemPrompt)
 
         do {
             // Pass URLs as-is; the web_fetch tool fetches them on demand.
             let userMessage = try await buildTextUserMessage(promptBuilder: promptBuilder, fetchURLs: false)
+            log("user", userMessage)
             let service = AppleIntelligenceService()
             let response = try await service.complete(
                 systemPrompt: systemPrompt,
@@ -88,11 +110,13 @@ final class ImportViewModel {
                         : nil
                 }
             )
+            log("assistant", response)
             storedLastResponse = response
             storedMessages = [["role": "user", "content": userMessage]]
             applyResponse(response, parser: parser, listTypes: listTypes)
             generatedWithOnDevice = true
         } catch {
+            log("error", error.localizedDescription)
             errorMessage = error.localizedDescription
         }
     }
@@ -111,6 +135,7 @@ final class ImportViewModel {
             customInstructions: settings.customSystemPromptInstructions
         )
         storedSystemPrompt = systemPrompt
+        log("system", systemPrompt)
 
         do {
             statusMessage = "Connecting to AI…"
@@ -122,6 +147,10 @@ final class ImportViewModel {
             var messages = try await buildLLMMessages(
                 settings: settings, promptBuilder: promptBuilder, systemPrompt: systemPrompt
             )
+            // Log the initial user message (last message in the array)
+            if let userMsg = messages.last, let content = userMsg["content"] as? String {
+                log("user", content)
+            }
             let tools = promptBuilder.buildTools()
             storedMessages = messages
 
@@ -133,6 +162,7 @@ final class ImportViewModel {
 
                 switch result {
                 case .content(let text):
+                    log("assistant", text)
                     storedMessages = messages
                     storedLastResponse = text
                     generatedWithOnDevice = false
@@ -142,18 +172,23 @@ final class ImportViewModel {
                 case .toolCalls(let assistantTurn, let calls):
                     messages.append(assistantTurn)
                     for call in calls {
+                        let argsDescription = call.arguments.map { "\($0.key): \($0.value)" }.joined(separator: ", ")
+                        log("tool_call", "\(call.name)(\(argsDescription))")
                         let output = await executeToolCall(call)
+                        log("tool_result", output)
                         messages.append(promptBuilder.buildToolResult(callID: call.id, content: output))
                     }
                 }
             }
             // Exhausted iterations — try plain completion with what we have
             let fallback = try await llm.complete(messages: messages)
+            log("assistant", fallback)
             storedMessages = messages
             storedLastResponse = fallback
             generatedWithOnDevice = false
             applyResponse(fallback, parser: parser, listTypes: listTypes)
         } catch {
+            log("error", error.localizedDescription)
             errorMessage = error.localizedDescription
         }
     }
@@ -401,6 +436,7 @@ struct ImportView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel: ImportViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var showDevLog = false
 
     init(pending: PendingImport) {
         self.pending = pending
@@ -425,6 +461,18 @@ struct ImportView: View {
                         dismiss()
                     }
                 }
+                if viewModel.isDevMode {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showDevLog = true
+                        } label: {
+                            Image(systemName: "ladybug")
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showDevLog) {
+                devLogSheet
             }
         }
         .task {
@@ -502,6 +550,52 @@ struct ImportView: View {
             }
         }
         .presentationDetents([.medium])
+    }
+
+    // MARK: Developer Log sheet
+
+    private var devLogSheet: some View {
+        NavigationStack {
+            List {
+                if viewModel.devLog.isEmpty {
+                    Text("No log entries yet.")
+                        .foregroundStyle(.secondary)
+                        .font(.footnote)
+                } else {
+                    ForEach(viewModel.devLog) { entry in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(entry.role.uppercased())
+                                .font(.caption.bold())
+                                .foregroundStyle(devLogRoleColor(entry.role))
+                            Text(entry.content)
+                                .font(.caption)
+                                .monospaced()
+                                .textSelection(.enabled)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+            .navigationTitle("Developer Log")
+            .navigationBarTitleInline()
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showDevLog = false }
+                }
+            }
+        }
+    }
+
+    private func devLogRoleColor(_ role: String) -> Color {
+        switch role {
+        case "system":      return .purple
+        case "user":        return .blue
+        case "assistant":   return .green
+        case "tool_call":   return .orange
+        case "tool_result": return .secondary
+        case "error":       return .red
+        default:            return .primary
+        }
     }
 
     // MARK: Preview

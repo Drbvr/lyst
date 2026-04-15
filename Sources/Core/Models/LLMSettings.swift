@@ -40,6 +40,7 @@ public struct LLMSettings: Codable {
     public var useThinking: Bool
     public var apiKey: String
     public var customSystemPromptInstructions: String
+    public var developerMode: Bool
 
     public init(
         processingMode: ProcessingMode = .onDevice,
@@ -48,7 +49,8 @@ public struct LLMSettings: Codable {
         model: String = "",
         useThinking: Bool = false,
         apiKey: String = "",
-        customSystemPromptInstructions: String = ""
+        customSystemPromptInstructions: String = "",
+        developerMode: Bool = false
     ) {
         self.processingMode                   = processingMode
         self.imageProcessingMode              = imageProcessingMode
@@ -57,10 +59,11 @@ public struct LLMSettings: Codable {
         self.useThinking                      = useThinking
         self.apiKey                           = apiKey
         self.customSystemPromptInstructions   = customSystemPromptInstructions
+        self.developerMode                    = developerMode
     }
 
-    /// Custom decoder so that existing stored JSON (without customSystemPromptInstructions)
-    /// continues to decode successfully — the field defaults to "" when absent.
+    /// Custom decoder so that existing stored JSON (without customSystemPromptInstructions
+    /// or developerMode) continues to decode successfully — fields default when absent.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         processingMode                 = try c.decode(ProcessingMode.self,     forKey: .processingMode)
@@ -70,6 +73,7 @@ public struct LLMSettings: Codable {
         useThinking                    = try c.decode(Bool.self,               forKey: .useThinking)
         apiKey                         = try c.decode(String.self,             forKey: .apiKey)
         customSystemPromptInstructions = try c.decodeIfPresent(String.self,    forKey: .customSystemPromptInstructions) ?? ""
+        developerMode                  = try c.decodeIfPresent(Bool.self,      forKey: .developerMode) ?? false
     }
 
     /// Load from the shared App Group container, falling back to defaults.

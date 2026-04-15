@@ -1,6 +1,9 @@
 import SwiftUI
 import Core
 import PhotosUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct CreateItemView: View {
     @Environment(AppState.self) private var appState
@@ -13,6 +16,7 @@ struct CreateItemView: View {
     @State private var pendingImportOnDismiss: PendingImport? = nil
     @State private var selectedPhoto: PhotosPickerItem? = nil
     @State private var isLoadingPhoto = false
+    @State private var clipboardHasImage = false
 
     var body: some View {
         NavigationStack {
@@ -54,6 +58,32 @@ struct CreateItemView: View {
         }
     }
 
+    // MARK: - Paste screenshot helper
+
+    private func pasteAndImportImage() {
+        #if os(iOS)
+        Task {
+            guard let image = await MainActor.run(body: { UIPasteboard.general.image }) else { return }
+            guard let tempURL = await writePastedImageToTempFile(image) else { return }
+            await MainActor.run {
+                pendingImportOnDismiss = PendingImport(image: tempURL)
+                dismiss()
+            }
+        }
+        #endif
+    }
+
+    #if os(iOS)
+    private func writePastedImageToTempFile(_ image: UIImage) async -> URL? {
+        await Task.detached(priority: .userInitiated) {
+            guard let data = image.jpegData(compressionQuality: 0.85) else { return nil }
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".jpg")
+            guard (try? data.write(to: tempURL)) != nil else { return nil }
+            return tempURL
+        }.value
+    }
+    #endif
     // MARK: - Photo import helper
 
     private func loadAndImportPhoto(_ item: PhotosPickerItem) async {
@@ -105,6 +135,21 @@ struct CreateItemView: View {
                             .foregroundStyle(.primary)
                     }
                 }
+
+                #if os(iOS)
+                Button {
+                    if appState.currentVaultURL == nil {
+                        showNoVaultAlert = true
+                    } else {
+                        pasteAndImportImage()
+                    }
+                } label: {
+                    Label("Paste Screenshot", systemImage: "doc.on.clipboard")
+                        .foregroundStyle(clipboardHasImage ? .primary : .secondary)
+                }
+                .buttonStyle(.plain)
+                .disabled(!clipboardHasImage || appState.currentVaultURL == nil)
+                #endif
 
                 Button {
                     if appState.currentVaultURL == nil {
@@ -169,6 +214,19 @@ struct CreateItemView: View {
                 Button("Cancel") { dismiss() }
             }
         }
+        .onAppear {
+            #if os(iOS)
+            clipboardHasImage = UIPasteboard.general.hasImages
+            #endif
+        }
+        #if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: UIPasteboard.changedNotification)) { _ in
+            clipboardHasImage = UIPasteboard.general.hasImages
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            clipboardHasImage = UIPasteboard.general.hasImages
+        }
+        #endif
     }
 
     // MARK: - Step 2: Fields form
