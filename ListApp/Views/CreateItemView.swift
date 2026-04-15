@@ -62,16 +62,28 @@ struct CreateItemView: View {
 
     private func pasteAndImportImage() {
         #if os(iOS)
-        guard let image = UIPasteboard.general.image,
-              let data = image.jpegData(compressionQuality: 0.85) else { return }
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString + ".jpg")
-        guard (try? data.write(to: tempURL)) != nil else { return }
-        pendingImportOnDismiss = PendingImport(image: tempURL)
-        dismiss()
+        Task {
+            guard let image = await MainActor.run(body: { UIPasteboard.general.image }) else { return }
+            guard let tempURL = await writePastedImageToTempFile(image) else { return }
+            await MainActor.run {
+                pendingImportOnDismiss = PendingImport(image: tempURL)
+                dismiss()
+            }
+        }
         #endif
     }
 
+    #if os(iOS)
+    private func writePastedImageToTempFile(_ image: UIImage) async -> URL? {
+        await Task.detached(priority: .userInitiated) {
+            guard let data = image.jpegData(compressionQuality: 0.85) else { return nil }
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".jpg")
+            guard (try? data.write(to: tempURL)) != nil else { return nil }
+            return tempURL
+        }.value
+    }
+    #endif
     // MARK: - Photo import helper
 
     private func loadAndImportPhoto(_ item: PhotosPickerItem) async {
