@@ -1,6 +1,9 @@
 import SwiftUI
 import Core
 import PhotosUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct CreateItemView: View {
     @Environment(AppState.self) private var appState
@@ -13,6 +16,7 @@ struct CreateItemView: View {
     @State private var pendingImportOnDismiss: PendingImport? = nil
     @State private var selectedPhoto: PhotosPickerItem? = nil
     @State private var isLoadingPhoto = false
+    @State private var clipboardHasImage = false
 
     var body: some View {
         NavigationStack {
@@ -52,6 +56,20 @@ struct CreateItemView: View {
                 appState.pendingImport = pending
             }
         }
+    }
+
+    // MARK: - Paste screenshot helper
+
+    private func pasteAndImportImage() {
+        #if os(iOS)
+        guard let image = UIPasteboard.general.image,
+              let data = image.jpegData(compressionQuality: 0.85) else { return }
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".jpg")
+        guard (try? data.write(to: tempURL)) != nil else { return }
+        pendingImportOnDismiss = PendingImport(image: tempURL)
+        dismiss()
+        #endif
     }
 
     // MARK: - Photo import helper
@@ -105,6 +123,19 @@ struct CreateItemView: View {
                             .foregroundStyle(.primary)
                     }
                 }
+
+                Button {
+                    if appState.currentVaultURL == nil {
+                        showNoVaultAlert = true
+                    } else {
+                        pasteAndImportImage()
+                    }
+                } label: {
+                    Label("Paste Screenshot", systemImage: "doc.on.clipboard")
+                        .foregroundStyle(clipboardHasImage ? .primary : .secondary)
+                }
+                .buttonStyle(.plain)
+                .disabled(!clipboardHasImage || appState.currentVaultURL == nil)
 
                 Button {
                     if appState.currentVaultURL == nil {
@@ -168,6 +199,11 @@ struct CreateItemView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
+        }
+        .onAppear {
+            #if os(iOS)
+            clipboardHasImage = UIPasteboard.general.hasImages
+            #endif
         }
     }
 

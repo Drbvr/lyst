@@ -4,6 +4,7 @@ import Core
 /// Settings for AI note generation — personal LLM configuration.
 struct LLMSettingsView: View {
 
+    @Environment(AppState.self) private var appState
     @State private var settings: LLMSettings = LLMSettings.load()
 
     var body: some View {
@@ -15,6 +16,7 @@ struct LLMSettingsView: View {
                     }
                 }
                 .pickerStyle(.menu)
+                Toggle("Developer Mode", isOn: $settings.developerMode)
             } header: {
                 Text("AI Processing")
             } footer: {
@@ -85,13 +87,18 @@ struct LLMSettingsView: View {
             }
         }
         .navigationTitle("AI Note Generation")
-        .onChange(of: settings.processingMode)      { _, _ in settings.save() }
-        .onChange(of: settings.imageProcessingMode) { _, _ in settings.save() }
-        .onChange(of: settings.baseURL)             { _, _ in settings.save() }
-        .onChange(of: settings.model)               { _, _ in settings.save() }
-        .onChange(of: settings.apiKey)              { _, _ in settings.save() }
-        .onChange(of: settings.useThinking)         { _, _ in settings.save() }
-        .onDisappear                                { settings.save() }
+        .onChange(of: settings.processingMode)                   { _, _ in settings.save() }
+        .onChange(of: settings.imageProcessingMode)              { _, _ in settings.save() }
+        .onChange(of: settings.baseURL)                          { _, _ in settings.save() }
+        .onChange(of: settings.model)                            { _, _ in settings.save() }
+        .onChange(of: settings.apiKey)                           { _, _ in settings.save() }
+        .onChange(of: settings.useThinking)                      { _, _ in settings.save() }
+        .onChange(of: settings.developerMode)                    { _, _ in settings.save() }
+        .onChange(of: settings.customSystemPromptInstructions)   { _, _ in settings.save() }
+        .onDisappear {
+            settings.save()
+            appState.llmSettings = settings
+        }
         .alert(connectionAlertTitle, isPresented: $showConnectionAlert) {
             Button("OK", role: .cancel) {}
         } message: {
