@@ -89,7 +89,7 @@ public actor AppleIntelligenceService {
         if let onAsk {
             tools.append(AskUserTool(onAsk: onAsk))
         }
-        let session = LanguageModelSession(instructions: systemPrompt, tools: tools)
+        let session = LanguageModelSession(tools: tools, instructions: systemPrompt)
         let first = try await session.respond(to: userMessage)
         let firstContent = first.content
         if let retryMessage = retryPrompt?(firstContent) {
