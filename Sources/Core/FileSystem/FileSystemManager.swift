@@ -9,8 +9,12 @@ public enum FileError: Error, Equatable {
     case ioError(String)
 }
 
-/// Protocol for file system operations
-public protocol FileSystemManager {
+/// Protocol for file system operations.
+///
+/// `Sendable` so implementations can be shared across actor boundaries and
+/// captured by detached tasks (e.g. AppState moves file scanning off the
+/// MainActor). Conformers are expected to have no mutable stored state.
+public protocol FileSystemManager: Sendable {
     func readFile(at path: String) -> Result<String, FileError>
     func writeFile(at path: String, content: String) -> Result<Void, FileError>
     func scanDirectory(at path: String, recursive: Bool) -> Result<[String], FileError>
@@ -18,7 +22,7 @@ public protocol FileSystemManager {
 }
 
 /// Default implementation of FileSystemManager
-public class DefaultFileSystemManager: FileSystemManager {
+public final class DefaultFileSystemManager: FileSystemManager, @unchecked Sendable {
 
     private let fileManager = FileManager.default
 

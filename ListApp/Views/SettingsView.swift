@@ -15,7 +15,10 @@ struct SettingsView: View {
         if let saved = UserDefaults.standard.string(forKey: "vaultDisplayName") {
             return saved
         }
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        guard let docs = FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return "Not set"
+        }
         let vault = docs.appendingPathComponent("ListAppVault")
         return FileManager.default.fileExists(atPath: vault.path) ? "ListAppVault" : "Not set"
     }()

@@ -24,6 +24,7 @@ class AppState {
     var listTypes: [ListType] = MockData.listTypes
     var isLoadingItems: Bool = false
     var currentVaultURL: URL? = nil
+    var errorMessage: String? = nil
     var selectedTheme: String {
         didSet { UserDefaults.standard.set(selectedTheme, forKey: "selectedTheme") }
     }
@@ -38,9 +39,13 @@ class AppState {
     private let filterEngine = ItemFilterEngine()
     private let searchEngine = FullTextSearchEngine()
     private let tagHierarchyHelper = TagHierarchy()
-    private let fileSystemManager = AppFileSystemManager()
+    private let coreFileSystem: FileSystemManager
+    private let fileSystemManager: AppFileSystemManager
 
-    init() {
+    init(fileSystem: FileSystemManager = DefaultFileSystemManager()) {
+        self.coreFileSystem = fileSystem
+        self.fileSystemManager = AppFileSystemManager(fileSystem: fileSystem)
+
         // Initialize with mock data immediately to avoid blocking UI
         self.items = MockData.allItems
         self.savedViews = Self.loadPersistedSavedViews() ?? MockData.savedViews
@@ -78,15 +83,25 @@ class AppState {
     }
 
     /// Reload items from a specific vault URL (called when user picks a folder).
-    /// Always updates items — nil means scan error; empty array means empty folder.
+    /// Scan errors leave existing items untouched. An empty scan result on a
+    /// previously-populated vault is surfaced as a warning rather than silently
+    /// wiping memory — a missing vault folder should not delete the user's view
+    /// of their items.
     func reloadItems(from vaultURL: URL) async {
         isLoadingItems = true
         defer { isLoadingItems = false }
 
-        if let loadedItems = scanItems(at: vaultURL) {
-            self.items = loadedItems
+        let scanned = await Task.detached(priority: .userInitiated) { [coreFileSystem] in
+            Self.scanItems(at: vaultURL, coreFileSystem: coreFileSystem)
+        }.value
+
+        guard let loadedItems = scanned else { return }
+
+        if loadedItems.isEmpty && !self.items.isEmpty {
+            errorMessage = "Vault scan returned no items — keeping current list."
+            return
         }
-        // nil result = scan error; leave existing items untouched
+        self.items = loadedItems
     }
 
     /// Load items from vault asynchronously to avoid blocking UI thread
@@ -99,7 +114,9 @@ class AppState {
             var isStale = false
             if let url = try? URL(resolvingBookmarkData: bookmarkData, options: [], relativeTo: nil, bookmarkDataIsStale: &isStale) {
                 let accessing = url.startAccessingSecurityScopedResource()
-                let loadedItems = scanItems(at: url)
+                let loadedItems = await Task.detached(priority: .userInitiated) { [coreFileSystem] in
+                    Self.scanItems(at: url, coreFileSystem: coreFileSystem)
+                }.value
                 if accessing { url.stopAccessingSecurityScopedResource() }
                 if let loadedItems = loadedItems, !loadedItems.isEmpty {
                     currentVaultURL = url
@@ -110,26 +127,28 @@ class AppState {
         }
 
         // Fall back to default Documents/ListAppVault
-        let documentsURL = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        guard let documentsURL = FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         let vaultURL = documentsURL.appendingPathComponent("ListAppVault")
 
         guard FileManager.default.fileExists(atPath: vaultURL.path) else { return }
 
-        if let loadedItems = scanItems(at: vaultURL) {
+        let loadedItems = await Task.detached(priority: .userInitiated) { [coreFileSystem] in
+            Self.scanItems(at: vaultURL, coreFileSystem: coreFileSystem)
+        }.value
+        if let loadedItems = loadedItems {
             currentVaultURL = vaultURL
             self.items = loadedItems
         }
     }
 
-    /// Scan a vault URL for markdown items.
-    /// Returns nil on scan/directory error, [] for a legitimate empty folder.
-    private func scanItems(at url: URL) -> [Item]? {
-        let coreFileSystem = DefaultFileSystemManager()
+    /// Scan a vault URL for markdown items. Runs on a background queue.
+    /// Returns nil on directory error, [] on a legitimately empty folder.
+    nonisolated private static func scanItems(at url: URL, coreFileSystem: FileSystemManager) -> [Item]? {
         let todoParser = ObsidianTodoParser()
 
         guard case .success(let filePaths) = coreFileSystem.scanDirectory(at: url.path, recursive: true) else {
-            return nil  // Directory read error — don't wipe existing items
+            return nil
         }
 
         var loadedItems: [Item] = []
@@ -138,17 +157,14 @@ class AppState {
 
             var parsed = todoParser.parseTodos(from: content, sourceFile: filePath)
 
-            // Stamp items with real file-system dates
             let attrs = try? FileManager.default.attributesOfItem(atPath: filePath)
             let fsCreated  = (attrs?[.creationDate]     as? Date) ?? Date()
             let fsModified = (attrs?[.modificationDate] as? Date) ?? Date()
 
             for i in parsed.indices {
-                // For todo items, use file creation date (YAML types keep their date_read/date_watched)
                 if parsed[i].type == "todo" {
                     parsed[i].createdAt = fsCreated
                 }
-                // Always stamp updatedAt with file modification date
                 parsed[i].updatedAt = fsModified
             }
 
@@ -202,33 +218,53 @@ class AppState {
 
     // MARK: - Actions
 
+    /// Toggle completion. Updates UI state optimistically, then persists.
+    /// On persist failure the UI state is reverted and `errorMessage` is set.
     func toggleCompletion(for item: Item) {
-        if let index = items.firstIndex(where: { $0.id == item.id }) {
-            items[index].completed.toggle()
-            items[index].updatedAt = Date()
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        let original = items[index]
+        items[index].completed.toggle()
+        items[index].updatedAt = Date()
+        let updatedItem = items[index]
 
-            Task {
-                _ = await fileSystemManager.toggleTodoCompletion(items[index])
+        Task { @MainActor in
+            let ok = await fileSystemManager.toggleTodoCompletion(updatedItem)
+            if !ok {
+                if let idx = self.items.firstIndex(where: { $0.id == original.id }) {
+                    self.items[idx] = original
+                }
+                self.errorMessage = fileSystemManager.error ?? "Could not persist change."
             }
         }
     }
 
     func deleteItem(_ item: Item) {
+        let original = items
         items.removeAll { $0.id == item.id }
 
-        Task {
-            _ = await fileSystemManager.deleteItem(item)
+        Task { @MainActor in
+            let ok = await fileSystemManager.deleteItem(item)
+            if !ok {
+                self.items = original
+                self.errorMessage = fileSystemManager.error ?? "Could not delete item."
+            }
         }
     }
 
     func updateItem(_ item: Item) {
-        if let index = items.firstIndex(where: { $0.id == item.id }) {
-            var updated = item
-            updated.updatedAt = Date()
-            items[index] = updated
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        let original = items[index]
+        var updated = item
+        updated.updatedAt = Date()
+        items[index] = updated
 
-            Task {
-                _ = await fileSystemManager.writeItem(updated)
+        Task { @MainActor in
+            let ok = await fileSystemManager.writeItem(updated)
+            if !ok {
+                if let idx = self.items.firstIndex(where: { $0.id == original.id }) {
+                    self.items[idx] = original
+                }
+                self.errorMessage = fileSystemManager.error ?? "Could not update item."
             }
         }
     }
@@ -239,40 +275,25 @@ class AppState {
     func createTodo(title: String, tags: [String], properties: [String: PropertyValue]) async {
         guard let vaultURL = currentVaultURL else { return }
 
-        let coreFileSystem = DefaultFileSystemManager()
         let inboxPath = vaultURL.appendingPathComponent("Inbox.md").path
+        let line = AppStateLogic.buildTodoLine(title: title, tags: tags, properties: properties)
 
-        // Build the markdown line
-        var line = "- [ ] \(title)"
-        if case .text(let p) = properties["priority"] {
-            let emoji: String
-            switch p {
-            case "high":   emoji = "⏫"
-            case "medium": emoji = "🔼"
-            case "low":    emoji = "🔽"
-            default:       emoji = ""
-            }
-            if !emoji.isEmpty { line += " \(emoji)" }
-        }
-        if case .date(let d) = properties["dueDate"] {
-            let fmt = ISO8601DateFormatter()
-            fmt.formatOptions = [.withFullDate]
-            line += " 📅 \(fmt.string(from: d))"
-        }
-        for tag in tags { line += " #\(tag)" }
-
-        // Read existing content or start fresh
         let existing: String
         if case .success(let content) = coreFileSystem.readFile(at: inboxPath) {
             existing = content
         } else {
             existing = "# Inbox\n"
         }
+        let newContent = AppStateLogic.appendTodoToInbox(existingContent: existing, line: line)
 
-        let newContent = existing.hasSuffix("\n") ? existing + line + "\n" : existing + "\n" + line + "\n"
-        _ = coreFileSystem.writeFile(at: inboxPath, content: newContent)
+        switch coreFileSystem.writeFile(at: inboxPath, content: newContent) {
+        case .success:
+            break
+        case .failure(let e):
+            errorMessage = "Failed to write Inbox.md: \(e)"
+            return
+        }
 
-        // Create and append in memory
         var newItem = Item(
             type: "todo",
             title: title,
@@ -291,44 +312,28 @@ class AppState {
     /// Writes a new .md file to {VaultRoot}/{TypeName}s/{sanitizedTitle}.md
     func createYAMLItem(type: String, title: String, tags: [String], properties: [String: PropertyValue]) async {
         guard let vaultURL = currentVaultURL else { return }
+        guard let safeName = AppStateLogic.sanitizedFilename(from: title) else {
+            errorMessage = "Invalid title for filename."
+            return
+        }
 
-        let coreFileSystem = DefaultFileSystemManager()
         let typeFolderName = type.capitalized + "s"
         let typeFolderURL = vaultURL.appendingPathComponent(typeFolderName)
-
-        // Ensure type folder exists
         try? FileManager.default.createDirectory(at: typeFolderURL, withIntermediateDirectories: true)
 
-        let safeName = title
-            .components(separatedBy: .init(charactersIn: "/\\:*?\"<>|"))
-            .joined(separator: "-")
-            .trimmingCharacters(in: .whitespaces)
         let filePath = typeFolderURL.appendingPathComponent("\(safeName).md").path
+        let contents = AppStateLogic.serializeYAMLItem(
+            type: type, title: title, tags: tags, properties: properties
+        )
 
-        // Build YAML frontmatter
-        var lines = ["---", "type: \(type)", "title: \(title)"]
-        if !tags.isEmpty {
-            let tagsStr = tags.map { "\"\($0)\"" }.joined(separator: ", ")
-            lines.append("tags: [\(tagsStr)]")
+        switch coreFileSystem.writeFile(at: filePath, content: contents) {
+        case .success:
+            break
+        case .failure(let e):
+            errorMessage = "Failed to write \(safeName).md: \(e)"
+            return
         }
 
-        let isoFull = ISO8601DateFormatter()
-        isoFull.formatOptions = [.withFullDate]
-
-        for (key, value) in properties.sorted(by: { $0.key < $1.key }) {
-            switch value {
-            case .text(let t):   lines.append("\(key): \(t)")
-            case .number(let n): lines.append(n.truncatingRemainder(dividingBy: 1) == 0
-                                     ? "\(key): \(Int(n))"
-                                     : "\(key): \(n)")
-            case .date(let d):   lines.append("\(key): \(isoFull.string(from: d))")
-            case .bool(let b):   lines.append("\(key): \(b)")
-            }
-        }
-        lines += ["---", ""]
-        _ = coreFileSystem.writeFile(at: filePath, content: lines.joined(separator: "\n"))
-
-        // Create and append in memory
         var newItem = Item(
             type: type,
             title: title,
