@@ -24,6 +24,10 @@ final class ImportViewModel {
 
     // Generated notes shown in the preview step
     var notes: [NoteEdit] = []
+    /// Number of ```yaml blocks in the last response that failed validation.
+    var invalidNoteCount: Int = 0
+    /// Reasons the invalid blocks were rejected (same order as the response).
+    var invalidReasons: [String] = []
 
     // ask_user tool: non-nil while waiting for the user to answer
     var pendingQuestion: String? = nil
@@ -312,11 +316,15 @@ final class ImportViewModel {
     // MARK: - Helpers
 
     private func applyResponse(_ response: String, parser: NoteResponseParser, listTypes: [ListType]) {
-        let parsed = parser.parseAll(response: response, listTypes: listTypes)
-        if parsed.isEmpty {
-            errorMessage = "No valid notes found in the AI response. Try refining or regenerating."
+        let batch = parser.parseAllWithDiagnostics(response: response, listTypes: listTypes)
+        invalidNoteCount = batch.invalidCount
+        invalidReasons = batch.invalidReasons
+        if batch.valid.isEmpty {
+            errorMessage = batch.invalidCount > 0
+                ? "The AI response had \(batch.invalidCount) draft(s) but none could be parsed. Try regenerating."
+                : "No valid notes found in the AI response. Try refining or regenerating."
         } else {
-            notes = parsed
+            notes = batch.valid
             step = .preview
         }
     }
@@ -437,6 +445,7 @@ struct ImportView: View {
     @State private var viewModel: ImportViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showDevLog = false
+    @State private var currentNoteIndex: Int = 0
 
     init(pending: PendingImport) {
         self.pending = pending
@@ -606,49 +615,92 @@ struct ImportView: View {
     }
 
     private var previewView: some View {
-        List {
-            ForEach($viewModel.notes) { $note in
-                NoteCardSection(note: $note, listTypes: appState.listTypes)
+        VStack(spacing: 0) {
+            if viewModel.notes.count > 1 {
+                HStack {
+                    Text("Note \(currentNoteIndex + 1) of \(viewModel.notes.count)")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
             }
 
-            if let error = viewModel.errorMessage {
+            if viewModel.invalidNoteCount > 0 {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                    Text(
+                        viewModel.invalidNoteCount == 1
+                            ? "1 draft couldn't be parsed"
+                            : "\(viewModel.invalidNoteCount) drafts couldn't be parsed"
+                    )
+                    .font(.footnote)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.yellow.opacity(0.15))
+            }
+
+            TabView(selection: $currentNoteIndex) {
+                ForEach(Array(viewModel.notes.enumerated()), id: \.offset) { index, _ in
+                    List {
+                        NoteCardSection(note: $viewModel.notes[index], listTypes: appState.listTypes)
+                    }
+                    .tag(index)
+                }
+            }
+            #if os(iOS)
+            .tabViewStyle(.page(indexDisplayMode: viewModel.notes.count > 1 ? .always : .never))
+            .indexViewStyle(.page(backgroundDisplayMode: .always))
+            #endif
+
+            List {
+                if let error = viewModel.errorMessage {
+                    Section {
+                        Text(error).foregroundStyle(.red).font(.footnote)
+                    }
+                }
+
                 Section {
-                    Text(error).foregroundStyle(.red).font(.footnote)
+                    TextField(
+                        "e.g. \"These are restaurants, not cafés\"",
+                        text: $viewModel.refinementText,
+                        axis: .vertical
+                    )
+                    .lineLimit(3...)
+                    Button {
+                        Task {
+                            await viewModel.regenerate(
+                                settings: appState.llmSettings,
+                                listTypes: appState.listTypes
+                            )
+                        }
+                    } label: {
+                        if viewModel.isRegenerating {
+                            ProgressView().frame(maxWidth: .infinity)
+                        } else {
+                            Label("Regenerate All", systemImage: "arrow.clockwise.sparkles")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(
+                        viewModel.refinementText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || viewModel.isRegenerating
+                    )
+                } header: {
+                    Text("Refine")
+                } footer: {
+                    Text("Describe what to change and regenerate all notes.")
                 }
             }
-
-            Section {
-                TextField(
-                    "e.g. \"These are restaurants, not cafés\"",
-                    text: $viewModel.refinementText,
-                    axis: .vertical
-                )
-                .lineLimit(3...)
-                Button {
-                    Task {
-                        await viewModel.regenerate(
-                            settings: appState.llmSettings,
-                            listTypes: appState.listTypes
-                        )
-                    }
-                } label: {
-                    if viewModel.isRegenerating {
-                        ProgressView().frame(maxWidth: .infinity)
-                    } else {
-                        Label("Regenerate All", systemImage: "arrow.clockwise.sparkles")
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(
-                    viewModel.refinementText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    || viewModel.isRegenerating
-                )
-            } header: {
-                Text("Refine")
-            } footer: {
-                Text("Describe what to change and regenerate all notes.")
-            }
+            .frame(maxHeight: 280)
+        }
+        .onChange(of: viewModel.notes.count) { _, newCount in
+            if currentNoteIndex >= newCount { currentNoteIndex = max(0, newCount - 1) }
         }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
