@@ -47,6 +47,7 @@ struct ItemListView: View {
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
+                            .accessibilityLabel("Delete \(current.title)")
                         }
                     }
                 }

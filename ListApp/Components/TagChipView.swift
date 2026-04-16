@@ -11,5 +11,6 @@ struct TagChipView: View {
             .background(Color.accentColor.opacity(0.12))
             .foregroundColor(.accentColor)
             .clipShape(Capsule())
+            .accessibilityLabel("Tag \(tag)")
     }
 }

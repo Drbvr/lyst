@@ -76,8 +76,10 @@ public enum AppStateLogic {
 
     /// Append a todo line to the existing inbox content, normalizing trailing
     /// newlines so the result has exactly one blank line between entries.
+    /// CRLF in the existing content is converted to LF so appended lines don't
+    /// mix line endings within the same file.
     public static func appendTodoToInbox(existingContent: String, line: String) -> String {
-        var base = existingContent
+        var base = existingContent.replacingOccurrences(of: "\r\n", with: "\n")
         if !base.hasSuffix("\n") { base += "\n" }
         return base + line + "\n"
     }
