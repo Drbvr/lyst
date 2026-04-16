@@ -5,26 +5,26 @@ import Core
 struct LLMSettingsView: View {
 
     @Environment(AppState.self) private var appState
-    @State private var settings: LLMSettings = LLMSettings.load()
 
     var body: some View {
+        @Bindable var appState = appState
         Form {
             Section {
-                Picker("Processing", selection: $settings.processingMode) {
+                Picker("Processing", selection: $appState.llmSettings.processingMode) {
                     ForEach(ProcessingMode.allCases, id: \.self) { mode in
                         Text(mode.displayName).tag(mode)
                     }
                 }
                 .pickerStyle(.menu)
-                Toggle("Developer Mode", isOn: $settings.developerMode)
+                Toggle("Developer Mode", isOn: $appState.llmSettings.developerMode)
             } header: {
                 Text("AI Processing")
             } footer: {
-                modeFooter
+                modeFooter(for: appState.llmSettings.processingMode)
             }
 
             Section {
-                TextEditor(text: $settings.customSystemPromptInstructions)
+                TextEditor(text: $appState.llmSettings.customSystemPromptInstructions)
                     .frame(minHeight: 100)
             } header: {
                 Text("Custom Instructions")
@@ -32,10 +32,10 @@ struct LLMSettingsView: View {
                 Text("Appended to every system prompt. Use this to set language, tone, or extra rules for note generation.")
             }
 
-            if settings.processingMode == .personalLLM {
+            if appState.llmSettings.processingMode == .personalLLM {
                 Section {
                     LabeledContent("Base URL") {
-                        TextField("http://192.168.1.1:8000", text: $settings.baseURL)
+                        TextField("http://192.168.1.1:8000", text: $appState.llmSettings.baseURL)
                             .multilineTextAlignment(.trailing)
                             #if os(iOS)
                             .keyboardType(.URL)
@@ -44,16 +44,16 @@ struct LLMSettingsView: View {
                             .noAutocapitalization()
                     }
                     LabeledContent("Model") {
-                        TextField("e.g. qwen3-14b", text: $settings.model)
+                        TextField("e.g. qwen3-14b", text: $appState.llmSettings.model)
                             .multilineTextAlignment(.trailing)
                             .autocorrectionDisabled()
                             .noAutocapitalization()
                     }
                     LabeledContent("API Key") {
-                        SecureField("Optional", text: $settings.apiKey)
+                        SecureField("Optional", text: $appState.llmSettings.apiKey)
                             .multilineTextAlignment(.trailing)
                     }
-                    Toggle("Enable Thinking", isOn: $settings.useThinking)
+                    Toggle("Enable Thinking", isOn: $appState.llmSettings.useThinking)
                 } header: {
                     Text("Server Configuration")
                 } footer: {
@@ -61,7 +61,7 @@ struct LLMSettingsView: View {
                 }
 
                 Section {
-                    Picker("Image Input", selection: $settings.imageProcessingMode) {
+                    Picker("Image Input", selection: $appState.llmSettings.imageProcessingMode) {
                         ForEach(ImageProcessingMode.allCases, id: \.self) { mode in
                             Text(mode.displayName).tag(mode)
                         }
@@ -70,7 +70,7 @@ struct LLMSettingsView: View {
                 } header: {
                     Text("Image Handling")
                 } footer: {
-                    switch settings.imageProcessingMode {
+                    switch appState.llmSettings.imageProcessingMode {
                     case .base64:
                         Text("The image is encoded and sent directly to the LLM. Requires a vision-capable model.")
                     case .ocr:
@@ -80,25 +80,13 @@ struct LLMSettingsView: View {
 
                 Section("Connection") {
                     Button("Test Connection") {
-                        Task { await testConnection() }
+                        Task { await testConnection(settings: appState.llmSettings) }
                     }
-                    .disabled(settings.baseURL.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(appState.llmSettings.baseURL.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }
         .navigationTitle("AI Note Generation")
-        .onChange(of: settings.processingMode)                   { _, _ in settings.save() }
-        .onChange(of: settings.imageProcessingMode)              { _, _ in settings.save() }
-        .onChange(of: settings.baseURL)                          { _, _ in settings.save() }
-        .onChange(of: settings.model)                            { _, _ in settings.save() }
-        .onChange(of: settings.apiKey)                           { _, _ in settings.save() }
-        .onChange(of: settings.useThinking)                      { _, _ in settings.save() }
-        .onChange(of: settings.developerMode)                    { _, _ in settings.save() }
-        .onChange(of: settings.customSystemPromptInstructions)   { _, _ in settings.save() }
-        .onDisappear {
-            settings.save()
-            appState.llmSettings = settings
-        }
         .alert(connectionAlertTitle, isPresented: $showConnectionAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -112,7 +100,7 @@ struct LLMSettingsView: View {
     @State private var connectionAlertTitle = ""
     @State private var connectionAlertMessage = ""
 
-    private func testConnection() async {
+    private func testConnection(settings: LLMSettings) async {
         let service = LLMService(settings: settings)
         let isReady = await service.checkHealthPublic()
 
@@ -124,8 +112,8 @@ struct LLMSettingsView: View {
     }
 
     @ViewBuilder
-    private var modeFooter: some View {
-        switch settings.processingMode {
+    private func modeFooter(for mode: ProcessingMode) -> some View {
+        switch mode {
         case .onDevice:
             Text("Uses Apple Intelligence on-device models. Requires iOS 26+ with Apple Intelligence enabled.")
         case .personalLLM:
