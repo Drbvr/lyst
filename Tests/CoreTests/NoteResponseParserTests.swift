@@ -193,4 +193,73 @@ final class NoteResponseParserTests: XCTestCase {
         let results = parser.parseAll(response: "Here is my analysis of the content.", listTypes: [bookType])
         XCTAssertTrue(results.isEmpty)
     }
+
+    // MARK: - parseAllWithDiagnostics
+
+    func testDiagnosticsCountsInvalidBlocks() {
+        let response = """
+        ```yaml
+        ---
+        type: book
+        title: Foundation
+        ---
+        ```
+        ```yaml
+        ---
+        type: unknowntype
+        title: SomethingElse
+        ---
+        ```
+        ```yaml
+        ---
+        title: MissingType
+        ---
+        ```
+        """
+        let batch = parser.parseAllWithDiagnostics(response: response, listTypes: [bookType, movieType])
+        XCTAssertEqual(batch.valid.count, 1)
+        XCTAssertEqual(batch.invalidCount, 2)
+        XCTAssertEqual(batch.invalidReasons.count, 2)
+        XCTAssertTrue(batch.invalidReasons.contains { $0.contains("Unknown type") })
+        XCTAssertTrue(batch.invalidReasons.contains { $0.contains("type") })
+    }
+
+    func testDiagnosticsAllValid() {
+        let response = """
+        ```yaml
+        ---
+        type: book
+        title: A
+        ---
+        ```
+        ```yaml
+        ---
+        type: movie
+        title: B
+        ---
+        ```
+        """
+        let batch = parser.parseAllWithDiagnostics(response: response, listTypes: [bookType, movieType])
+        XCTAssertEqual(batch.valid.count, 2)
+        XCTAssertEqual(batch.invalidCount, 0)
+    }
+
+    func testDiagnosticsAllInvalid() {
+        let response = """
+        ```yaml
+        ---
+        title: NoType
+        ---
+        ```
+        ```yaml
+        ---
+        type: unknown
+        title: X
+        ---
+        ```
+        """
+        let batch = parser.parseAllWithDiagnostics(response: response, listTypes: [bookType])
+        XCTAssertTrue(batch.valid.isEmpty)
+        XCTAssertEqual(batch.invalidCount, 2)
+    }
 }
