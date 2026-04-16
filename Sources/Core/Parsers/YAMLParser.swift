@@ -120,7 +120,12 @@ public class YAMLFrontmatterParser: FrontmatterParser {
             if trimmed.hasPrefix("\(field):") {
                 let parts = trimmed.components(separatedBy: ":")
                 if parts.count > 1 {
-                    return parts[1...].joined(separator: ":").trimmingCharacters(in: .whitespaces)
+                    let value = parts[1...].joined(separator: ":")
+                        .trimmingCharacters(in: .whitespaces)
+                    // Treat `title:` with no value as absent, not as the empty
+                    // string — an empty title is always a caller bug and
+                    // should not round-trip through the system.
+                    return value.isEmpty ? nil : value
                 }
             }
         }
