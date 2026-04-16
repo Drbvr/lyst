@@ -3,6 +3,21 @@
 
 import PackageDescription
 
+// ListApp depends on SwiftUI/UIKit and only builds on Apple platforms.
+// Core and CoreTests are pure Foundation/XCTest and run on Linux for cheap CI.
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+let platformSpecificTargets: [Target] = [
+    .executableTarget(
+        name: "ListApp",
+        dependencies: ["Core"],
+        path: "ListApp",
+        exclude: ["Info.plist", "README.md"]
+    ),
+]
+#else
+let platformSpecificTargets: [Target] = []
+#endif
+
 let package = Package(
     name: "ListApp",
     platforms: [
@@ -15,12 +30,6 @@ let package = Package(
             targets: ["Core"]),
     ],
     targets: [
-        .executableTarget(
-            name: "ListApp",
-            dependencies: ["Core"],
-            path: "ListApp",
-            exclude: ["Info.plist", "README.md"]
-        ),
         .target(
             name: "Core",
             path: "Sources/Core"),
@@ -28,5 +37,5 @@ let package = Package(
             name: "CoreTests",
             dependencies: ["Core"],
             path: "Tests/CoreTests"),
-    ]
+    ] + platformSpecificTargets
 )
