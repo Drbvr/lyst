@@ -78,8 +78,8 @@ public class FullTextSearchEngine: SearchEngine {
                 }
             }
 
-            // Search in content (lower weight, count occurrences)
-            let contentMatches = countMatches(in: item.title, query: lowerQuery)
+            // Search in source file path (lower weight, count occurrences)
+            let contentMatches = countMatches(in: item.sourceFile, query: lowerQuery)
             score += Double(contentMatches) * 1
 
             if score > 0 {

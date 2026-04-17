@@ -88,7 +88,7 @@ public class ObsidianTodoParser: MarkdownParser {
                     let checkbox = line[checkboxRange]
                     // Extract just the bracket part
                     if let bracketStart = checkbox.firstIndex(of: "["),
-                       let bracketEnd = checkbox.firstIndex(of: "]") {
+                       let bracketEnd = checkbox.lastIndex(of: "]") {
                         let nextIndex = checkbox.index(after: bracketEnd)
                         if nextIndex <= checkbox.endIndex {
                             return checkbox[bracketStart..<nextIndex]
