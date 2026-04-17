@@ -347,6 +347,11 @@ public class YAMLFrontmatterParser: FrontmatterParser {
     private func parsePropertyValue(_ value: String) -> PropertyValue? {
         let trimmed = value.trimmingCharacters(in: .whitespaces)
 
+        // Empty trailing value (e.g. `title:`) — treat as absent so callers
+        // can distinguish "missing" from "present-and-empty" and so empty
+        // titles don't round-trip through the system.
+        if trimmed.isEmpty { return nil }
+
         // Try to parse as number
         if let number = Double(trimmed) {
             return .number(number)
