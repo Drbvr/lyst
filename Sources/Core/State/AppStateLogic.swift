@@ -128,17 +128,40 @@ public enum AppStateLogic {
 
     // MARK: - Checkbox matching
 
-    /// Regex-anchored test: does `line` represent a checkbox line whose task
-    /// text matches `itemTitle` exactly (up to trailing metadata like #tags or
-    /// date emojis)? This is what callers should use instead of
-    /// `line.contains(item.title)`, which matches "Buy" inside "Buy milk".
+    /// Does `line` represent an Obsidian checkbox line whose task-text equals
+    /// `itemTitle`? Extracts the task text (everything after `- [ ]`), strips
+    /// the same metadata the todo parser strips (dates, priority emojis,
+    /// tags), and compares the result. Used instead of
+    /// `line.contains(item.title)`, which incorrectly matches "Buy" inside
+    /// "Buy milk".
     public static func isCheckboxLine(_ line: String, forTitle itemTitle: String) -> Bool {
-        let escaped = NSRegularExpression.escapedPattern(for: itemTitle)
-        // ^[whitespace]*[-*] [whitespace]+ \[[ xX]\] [whitespace]+ <title> ( $ | [whitespace] | # )
-        let pattern = "^\\s*[-*]\\s+\\[[ xX]\\]\\s+\(escaped)(\\s|$|#)"
+        let pattern = "^\\s*[-*]\\s+\\[[ xX]\\]\\s+(.*)$"
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
         let range = NSRange(line.startIndex..., in: line)
-        return regex.firstMatch(in: line, range: range) != nil
+        guard let match = regex.firstMatch(in: line, range: range),
+              let taskRange = Range(match.range(at: 1), in: line) else {
+            return false
+        }
+        let taskText = String(line[taskRange])
+        return stripTaskMetadata(taskText) == itemTitle
+    }
+
+    /// Remove the same Obsidian task metadata the todo parser removes:
+    /// 📅-prefixed dates, priority emojis (⏫🔼🔽), and `#tag` suffixes.
+    /// Kept private so the stripping rules stay in sync with the parser.
+    private static func stripTaskMetadata(_ text: String) -> String {
+        var result = text
+        result = result.replacingOccurrences(
+            of: "📅\\s*\\d{4}-\\d{2}-\\d{2}(?:T\\d{2}:\\d{2})?",
+            with: "", options: .regularExpression
+        )
+        result = result.replacingOccurrences(
+            of: "[⏫🔼🔽]", with: "", options: .regularExpression
+        )
+        result = result.replacingOccurrences(
+            of: "#[\\w/]+", with: "", options: .regularExpression
+        )
+        return result.trimmingCharacters(in: .whitespaces)
     }
 
     /// Flip `[ ]`/`[x]` on the first line that matches `itemTitle` via
