@@ -1,0 +1,35 @@
+name: Swift Test (Linux)
+
+# Runs the Core XCTest suite on an Ubuntu runner. Fast feedback for
+# Sources/Core changes without needing macOS minutes. iOS-only code
+# (SwiftUI views, FoundationModels, @Observable view models) is
+# outside the Core target and is not exercised here.
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  swift-test:
+    name: swift test --parallel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "5.10"
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build Core
+        run: swift build --target Core
+
+      - name: Run Core tests
+        run: swift test --parallel

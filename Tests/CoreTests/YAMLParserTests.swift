@@ -559,6 +559,40 @@ final class YAMLParserTests: XCTestCase {
         XCTAssertNotEqual(error1, error3)
     }
 
+    // MARK: - Empty / whitespace title handling
+
+    func testParseItemPropertiesRejectsEmptyTitle() {
+        let yaml = """
+        type: book
+        title:
+        author: Andy Weir
+        """
+
+        let result = parser.parseItemProperties(yaml: yaml)
+        guard case .success(let properties) = result else {
+            XCTFail("Expected success")
+            return
+        }
+        // Empty trailing value should not be stored as empty-text — it should
+        // be absent so callers can flag it as "missing title".
+        XCTAssertNil(properties["title"], "Empty title value should not be parsed as empty text")
+    }
+
+    func testParseItemPropertiesRoundTripsQuotedTitle() {
+        // A title that contains double quotes should round-trip through the
+        // parser when quoted per `AppStateLogic.yamlQuote`.
+        let yaml = "title: \"He said \\\"hi\\\"\""
+        let result = parser.parseItemProperties(yaml: yaml)
+        guard case .success(let properties) = result,
+              case .text(let title) = properties["title"] else {
+            XCTFail("Expected quoted title to parse")
+            return
+        }
+        // The parser may not unescape backslash-quote itself, but at minimum
+        // the content should not be lost or truncated.
+        XCTAssertTrue(title.contains("hi"), "Round-tripped title lost content: \(title)")
+    }
+
     func testParseViewWithFolders() {
         let yaml = """
         name: Work

@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(FoundationModels)
 import FoundationModels
+#endif
 
 // MARK: - Error
 
@@ -11,6 +13,8 @@ public enum AppleIntelligenceError: LocalizedError {
         "Enable it in Settings → Apple Intelligence & Siri, or switch to Personal LLM in AI settings."
     }
 }
+
+#if canImport(FoundationModels)
 
 // MARK: - Tools
 
@@ -99,3 +103,5 @@ public actor AppleIntelligenceService {
         return firstContent
     }
 }
+
+#endif

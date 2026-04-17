@@ -79,16 +79,42 @@ public struct NoteResponseParser {
 
     // MARK: - Batch Parsing
 
-    /// Parse all \`\`\`yaml blocks in a response and return every successfully parsed note.
-    /// Invalid blocks are silently dropped.
-    public func parseAll(response: String, listTypes: [ListType]) -> [NoteEdit] {
-        extractAllYAMLBlocks(from: response).compactMap { block in
+    /// Result of parsing an LLM response containing multiple \`\`\`yaml blocks.
+    public struct BatchResult {
+        public let valid: [NoteEdit]
+        /// Reasons blocks failed validation, in the order they appeared. Count
+        /// = number of invalid blocks; callers can surface this to users so
+        /// they aren't surprised when "5 notes" renders as 3 drafts.
+        public let invalidReasons: [String]
+
+        public var invalidCount: Int { invalidReasons.count }
+    }
+
+    /// Parse all \`\`\`yaml blocks in a response. Unlike `parseAll`, returns
+    /// both the valid notes and the reasons invalid blocks were dropped so the
+    /// UI can warn the user ("1 draft couldn't be parsed").
+    public func parseAllWithDiagnostics(
+        response: String, listTypes: [ListType]
+    ) -> BatchResult {
+        var valid: [NoteEdit] = []
+        var invalid: [String] = []
+        for block in extractAllYAMLBlocks(from: response) {
             let wrapped = "```yaml\n\(block)\n```"
-            if case .success(let title, let type, let properties, let tags) = parse(response: wrapped, listTypes: listTypes) {
-                return NoteEdit(type: type, title: title, properties: properties, tags: tags)
+            switch parse(response: wrapped, listTypes: listTypes) {
+            case .success(let title, let type, let properties, let tags):
+                valid.append(NoteEdit(type: type, title: title, properties: properties, tags: tags))
+            case .invalid(let reason):
+                invalid.append(reason)
             }
-            return nil
         }
+        return BatchResult(valid: valid, invalidReasons: invalid)
+    }
+
+    /// Parse all \`\`\`yaml blocks in a response. Returns only the valid notes
+    /// for back-compat with existing callers; new code should prefer
+    /// `parseAllWithDiagnostics` so invalid blocks can be surfaced.
+    public func parseAll(response: String, listTypes: [ListType]) -> [NoteEdit] {
+        parseAllWithDiagnostics(response: response, listTypes: listTypes).valid
     }
 
     // MARK: - Private helpers

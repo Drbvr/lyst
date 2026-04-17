@@ -14,6 +14,8 @@ struct ItemRowView: View {
                         .font(.title3)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(item.completed ? "Mark \(item.title) as not done" : "Mark \(item.title) as done")
+                .accessibilityAddTraits(.isButton)
             } else if item.type == "book" {
                 Image(systemName: item.completed ? "book.closed.fill" : "book.closed")
                     .foregroundStyle(item.completed ? .green : .secondary)

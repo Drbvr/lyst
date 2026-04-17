@@ -156,6 +156,8 @@ private struct TodoDetailContent: View {
                         .foregroundStyle(item.completed ? .green : .secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(item.completed ? "Mark as not done" : "Mark as done")
+                .accessibilityAddTraits(.isButton)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.completed ? "Completed" : "Not completed").font(.headline)
