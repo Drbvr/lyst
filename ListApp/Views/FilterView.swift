@@ -58,7 +58,7 @@ struct FilterView: View {
                     return (tag: childTag, count: count)
                 }
             let totalCount = items.filter { item in
-                item.tags.contains { $0.hasPrefix(topLevel) }
+                item.tags.contains { $0 == topLevel || $0.hasPrefix(topLevel + "/") }
             }.count
             return (tag: topLevel, count: totalCount, children: children)
         }

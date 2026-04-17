@@ -94,8 +94,9 @@ public class ItemFilterEngine: FilterEngine {
 
     private func filterByFolders(_ items: [Item], folders: [String]) -> [Item] {
         return items.filter { item in
-            folders.contains { folderName in
-                item.sourceFile.contains("/\(folderName)/") || item.sourceFile.contains("\(folderName)/")
+            let pathComponents = item.sourceFile.components(separatedBy: "/")
+            return folders.contains { folderName in
+                pathComponents.contains(folderName)
             }
         }
     }

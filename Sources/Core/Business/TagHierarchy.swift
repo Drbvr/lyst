@@ -45,6 +45,7 @@ public struct TagHierarchy {
     public func getAncestors(of tag: String) -> [String] {
         var ancestors: [String] = []
         let components = tag.components(separatedBy: "/")
+        guard !components.isEmpty else { return [] }
 
         for i in 1...components.count {
             let ancestor = components[0..<i].joined(separator: "/")
