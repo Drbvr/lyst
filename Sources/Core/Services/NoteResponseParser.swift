@@ -124,19 +124,47 @@ public struct NoteResponseParser {
         extractAllYAMLBlocks(from: text).first
     }
 
-    /// Extract the contents of every ```yaml ... ``` fence in order.
+    /// Extract the content of every YAML frontmatter document the response
+    /// contains. A document is any `---`-delimited block, whether it sits in
+    /// its own ```` ```yaml ``` ```` fence or shares a fence with siblings
+    /// (Apple Intelligence commonly returns the latter for batch imports).
     private func extractAllYAMLBlocks(from text: String) -> [String] {
         let pattern = #"```yaml\s*\n([\s\S]*?)```"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
         let nsRange = NSRange(text.startIndex..., in: text)
-        return regex.matches(in: text, range: nsRange).compactMap { match in
-            guard let range = Range(match.range(at: 1), in: text) else { return nil }
-            return String(text[range])
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .components(separatedBy: .newlines)
-                .filter { $0 != "---" }
-                .joined(separator: "\n")
+        var results: [String] = []
+        for match in regex.matches(in: text, range: nsRange) {
+            guard let range = Range(match.range(at: 1), in: text) else { continue }
+            let fenceContent = String(text[range])
+            results.append(contentsOf: splitYAMLDocuments(fenceContent))
         }
+        return results
+    }
+
+    /// Split a fence's content into individual YAML documents by treating
+    /// every line that is exactly `---` (after trimming) as a separator.
+    /// Runs of separators and empty leading/trailing sections are dropped.
+    private func splitYAMLDocuments(_ content: String) -> [String] {
+        var documents: [String] = []
+        var current: [String] = []
+
+        func flush() {
+            let joined = current
+                .joined(separator: "\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !joined.isEmpty { documents.append(joined) }
+            current.removeAll(keepingCapacity: true)
+        }
+
+        for line in content.components(separatedBy: .newlines) {
+            if line.trimmingCharacters(in: .whitespaces) == "---" {
+                flush()
+            } else {
+                current.append(line)
+            }
+        }
+        flush()
+        return documents
     }
 
     /// Extract a simple scalar value: `key: value` (first match wins).
