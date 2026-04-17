@@ -34,7 +34,7 @@ struct ContentView: View {
                 SavedViewsListView()
             }
             .tabItem {
-                Label("Views", systemImage: "list.bullet.rectangle")
+                Label("Home", systemImage: "house")
             }
             .tag(0)
 
