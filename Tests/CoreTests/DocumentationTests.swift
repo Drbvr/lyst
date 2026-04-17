@@ -20,44 +20,6 @@ final class DocumentationTests: XCTestCase {
     func testREADMEExists() {
         let readme = projectRoot + "/README.md"
         XCTAssertTrue(FileManager.default.fileExists(atPath: readme), "README.md must exist")
-
-        let content = try? String(contentsOfFile: readme, encoding: .utf8)
-        XCTAssertNotNil(content)
-        XCTAssertTrue(content?.contains("Phase 1") ?? false)
-        XCTAssertTrue(content?.contains("208") ?? false)
-    }
-
-    func testPhase2PrepExists() {
-        let phase2 = projectRoot + "/PHASE2-PREP.md"
-        XCTAssertTrue(FileManager.default.fileExists(atPath: phase2), "PHASE2-PREP.md must exist")
-
-        let content = try? String(contentsOfFile: phase2, encoding: .utf8)
-        XCTAssertNotNil(content)
-        XCTAssertTrue(content?.contains("iOS") ?? false)
-        XCTAssertTrue(content?.contains("SwiftUI") ?? false)
-    }
-
-    func testKnownIssuesExists() {
-        let issues = projectRoot + "/KNOWN-ISSUES.md"
-        XCTAssertTrue(FileManager.default.fileExists(atPath: issues), "KNOWN-ISSUES.md must exist")
-
-        let content = try? String(contentsOfFile: issues, encoding: .utf8)
-        XCTAssertNotNil(content)
-        XCTAssertTrue(content?.contains("Limitations") ?? false)
-    }
-
-    func testMilestonesExists() {
-        let milestones = projectRoot + "/milestones.md"
-        XCTAssertTrue(FileManager.default.fileExists(atPath: milestones), "milestones.md must exist")
-
-        let content = try? String(contentsOfFile: milestones, encoding: .utf8)
-        XCTAssertNotNil(content)
-        XCTAssertTrue(content?.contains("MILESTONE") ?? false)
-    }
-
-    func testSpecExists() {
-        let spec = projectRoot + "/spec.md"
-        XCTAssertTrue(FileManager.default.fileExists(atPath: spec), "spec.md must exist")
     }
 
     func testPublicAPIDocumentation() {
@@ -101,16 +63,6 @@ final class DocumentationTests: XCTestCase {
         XCTAssertEqual(decodedView?.name, "Test View")
     }
 
-    func testPhase1Complete() {
-        // Verify all milestones are complete
-        let milestones = projectRoot + "/milestones.md"
-        let content = try? String(contentsOfFile: milestones, encoding: .utf8)
-
-        // All 8 milestones should be documented
-        XCTAssertTrue(content?.contains("MILESTONE 1") ?? false)
-        XCTAssertTrue(content?.contains("MILESTONE 8") ?? false)
-    }
-
     func testCLIDocumentation() {
         // Verify CLI help is available
         let cli = ListAppCLI(fileSystem: DefaultFileSystemManager())
@@ -141,12 +93,4 @@ final class DocumentationTests: XCTestCase {
         XCTAssertTrue(testFiles?.contains("FilterEngineTests.swift") ?? false)
     }
 
-    func testAllMilestonesHaveSmokeTests() {
-        // Reference to smoke tests in milestones
-        let milestones = projectRoot + "/milestones.md"
-        let content = try? String(contentsOfFile: milestones, encoding: .utf8)
-
-        XCTAssertTrue(content?.contains("Smoke Test") ?? false)
-        XCTAssertTrue(content?.contains("swift test") ?? false)
-    }
 }

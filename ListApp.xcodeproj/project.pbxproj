@@ -23,6 +23,7 @@
 		6515008C2767CC1B95D988C5 /* FileSystemManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 173C171118937FC122082954 /* FileSystemManager.swift */; };
 		68B24A985CE906D46AFF565E /* YAMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77DFEFB07011F2A98AAF8924 /* YAMLParser.swift */; };
 		6B11344F06775C7CCE05C34A /* WebContentFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94E4121FF209805389C99FF0 /* WebContentFetcher.swift */; };
+		DD33EE44FF55CC66BB77AA22 /* URLSession+LinuxAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE22FF55DD66BB77CC88AA99 /* URLSession+LinuxAsync.swift */; };
 		77B277CBACF9C6E2EB8BC950 /* PropertyValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC6379FC2ABB5382BAC2211B /* PropertyValue.swift */; };
 		78DF379772470C8E60BB6E5E /* PromptBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A84474E907996DE82622CA /* PromptBuilder.swift */; };
 		808BA861A11C54867C8B4C0E /* LLMSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 758E6F984249740C47FDC9CC /* LLMSettings.swift */; };
@@ -114,6 +115,7 @@
 		926ECAC1EABA626C9BDC6520 /* TagHierarchy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagHierarchy.swift; sourceTree = "<group>"; };
 		94175AF476086CA92FD0AFF0 /* ItemRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemRowView.swift; sourceTree = "<group>"; };
 		94E4121FF209805389C99FF0 /* WebContentFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebContentFetcher.swift; sourceTree = "<group>"; };
+		EE22FF55DD66BB77CC88AA99 /* URLSession+LinuxAsync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URLSession+LinuxAsync.swift"; sourceTree = "<group>"; };
 		94FD86F2DFEE5B04B2DEC947 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		9C6090889E5BD439B99D1145 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9F6BD350797F8512171DCE11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -159,6 +161,7 @@
 				18DD8CCF6744766E8B0F32A1 /* NoteResponseParser.swift */,
 				85A84474E907996DE82622CA /* PromptBuilder.swift */,
 				94E4121FF209805389C99FF0 /* WebContentFetcher.swift */,
+				EE22FF55DD66BB77CC88AA99 /* URLSession+LinuxAsync.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -435,6 +438,7 @@
 				B01B181C0A0A60AEC46976F5 /* View.swift in Sources */,
 				371C283C9DDF49FB09357780 /* ViewManager.swift in Sources */,
 				6B11344F06775C7CCE05C34A /* WebContentFetcher.swift in Sources */,
+				DD33EE44FF55CC66BB77AA22 /* URLSession+LinuxAsync.swift in Sources */,
 				68B24A985CE906D46AFF565E /* YAMLParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

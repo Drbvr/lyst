@@ -27,15 +27,18 @@ public enum AppStateLogic {
     /// on iOS/macOS, trims whitespace, and rejects results that would escape
     /// the containing folder (`..`, leading `/`, empty).
     public static func sanitizedFilename(from title: String) -> String? {
+        // Reject absolute-path-looking titles before stripping so
+        // `/etc/passwd` can't become `-etc-passwd` and hide its intent.
+        let trimmedInput = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmedInput.hasPrefix("/") else { return nil }
+
         let invalid = CharacterSet(charactersIn: "/\\:*?\"<>|")
-        let cleaned = title
+        let cleaned = trimmedInput
             .components(separatedBy: invalid)
             .joined(separator: "-")
             .trimmingCharacters(in: .whitespaces)
 
         guard !cleaned.isEmpty else { return nil }
-        guard !cleaned.hasPrefix("/") else { return nil }
-        // Reject any path-traversal component.
         let parts = cleaned.split(separator: "-", omittingEmptySubsequences: true)
         if parts.contains(where: { $0 == ".." }) { return nil }
         if cleaned == "." || cleaned == ".." { return nil }
