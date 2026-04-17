@@ -76,6 +76,61 @@ final class NoteResponseParserTests: XCTestCase {
         XCTAssertEqual(results[1].type,  "movie")
     }
 
+    // MARK: - Multiple entries in a single fence
+
+    /// Apple Intelligence's batch import returns one ```yaml``` fence with
+    /// every entry separated by `---` inside. The parser must emit one note
+    /// per document, not concatenate them into a single block whose first
+    /// `title:` wins.
+    func testSingleFenceWithMultipleEntries() {
+        let response = """
+        ```yaml
+        ---
+        type: book
+        title: Permutation City
+        author: Greg Egan
+        ---
+        ---
+        type: book
+        title: Mars Trilogy
+        author: Kim Stanley Robinson
+        ---
+        ---
+        type: book
+        title: Anathem
+        author: Neal Stephenson
+        ---
+        ```
+        """
+        let results = parser.parseAll(response: response, listTypes: [bookType])
+        XCTAssertEqual(results.count, 3)
+        XCTAssertEqual(results[0].title, "Permutation City")
+        XCTAssertEqual(results[1].title, "Mars Trilogy")
+        XCTAssertEqual(results[2].title, "Anathem")
+    }
+
+    /// Some LLMs omit the doubled separator — a single `---` serves both as
+    /// the closing of one document and the opening of the next.
+    func testSingleFenceWithSingleDashSeparators() {
+        let response = """
+        ```yaml
+        ---
+        type: book
+        title: A
+        ---
+        type: book
+        title: B
+        ---
+        type: book
+        title: C
+        ---
+        ```
+        """
+        let results = parser.parseAll(response: response, listTypes: [bookType])
+        XCTAssertEqual(results.count, 3)
+        XCTAssertEqual(results.map(\.title), ["A", "B", "C"])
+    }
+
     // MARK: - Invalid blocks dropped
 
     func testInvalidBlocksAreDropped() {
