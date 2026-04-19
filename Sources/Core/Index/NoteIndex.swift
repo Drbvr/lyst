@@ -141,12 +141,15 @@ public actor NoteIndex {
         exec(db, "DELETE FROM chunks WHERE file=?", path)
 
         for chunk in chunks {
+            // Parenthesise `try?` so `.flatMap` dispatches on `Data?` (Optional)
+            // rather than `Data` (Sequence, where $0 would be UInt8). The latter
+            // compiles on Linux Swift 5.10 but Xcode 26's compiler rejects it.
+            let headingData = try? JSONSerialization.data(withJSONObject: chunk.headingPath)
+            let headingJSON = headingData.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
             exec(db, """
                 INSERT INTO chunks(file, heading_path, start_line, end_line, text)
                 VALUES(?,?,?,?,?)
-            """, path,
-                 try? JSONSerialization.data(withJSONObject: chunk.headingPath).flatMap { String(data: $0, encoding: .utf8) } ?? "[]",
-                 chunk.startLine, chunk.endLine, chunk.text)
+            """, path, headingJSON, chunk.startLine, chunk.endLine, chunk.text)
 
             let chunkId = sqlite3_last_insert_rowid(db)
 
