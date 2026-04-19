@@ -45,11 +45,15 @@ struct ChatView: View {
 
         let provider: any LLMProvider
         if settings.processingMode == .onDevice {
+#if canImport(FoundationModels)
             if #available(iOS 26.0, *) {
                 provider = AppleIntelligenceProvider(toolRunner: runner)
             } else {
                 provider = OpenAIProvider(settings: settings)
             }
+#else
+            provider = OpenAIProvider(settings: settings)
+#endif
         } else {
             provider = OpenAIProvider(settings: settings)
         }
@@ -149,8 +153,8 @@ private struct ChatConversationView: View {
                         .font(.title2)
                         .foregroundStyle(
                             viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? .tertiary
-                            : Color.accentColor
+                            ? AnyShapeStyle(.tertiary)
+                            : AnyShapeStyle(Color.accentColor)
                         )
                 }
                 .disabled(viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

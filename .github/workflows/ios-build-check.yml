@@ -1,0 +1,43 @@
+name: iOS Build Check
+
+# Compiles the Xcode app target on macOS for fast feedback on SwiftUI/UIKit
+# compile issues that Linux `swift test` cannot catch.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-build:
+    name: xcodebuild (no signing)
+    # macos-15 (Sequoia) carries Xcode 26 + the iOS 26 SDK required by this project.
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Xcode version & installed SDKs
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Build ListApp
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project ListApp.xcodeproj \
+            -scheme ListApp \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tail -400
