@@ -1,0 +1,32 @@
+name: iOS Build Check
+
+# Compiles the Xcode app target on macOS for fast feedback on SwiftUI/UIKit
+# compile issues that Linux `swift test` cannot catch.
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  ios-build:
+    name: xcodebuild (no signing)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Build ListApp
+        run: |
+          xcodebuild \
+            -project ListApp.xcodeproj \
+            -scheme ListApp \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
