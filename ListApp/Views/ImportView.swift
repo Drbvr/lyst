@@ -67,7 +67,7 @@ final class ImportViewModel {
         isDevMode = settings.developerMode
         devLog = []
 
-        if #available(iOS 26, macOS 26, *), settings.processingMode == .onDevice {
+        if #available(iOS 26, *), settings.processingMode == .onDevice {
             if AppleIntelligenceService.isAvailable {
                 await processWithAppleIntelligence(
                     listTypes: listTypes, items: items,
@@ -83,7 +83,7 @@ final class ImportViewModel {
 
     // MARK: - Apple Intelligence
 
-    @available(iOS 26.0, macOS 26.0, *)
+    @available(iOS 26.0, *)
     private func processWithAppleIntelligence(
         listTypes: [ListType], items: [Item], customInstructions: String
     ) async {
@@ -277,7 +277,7 @@ final class ImportViewModel {
         let parser = NoteResponseParser()
         let promptBuilder = PromptBuilder()
 
-        if #available(iOS 26, macOS 26, *), generatedWithOnDevice {
+        if #available(iOS 26, *), generatedWithOnDevice {
             let enhanced = (storedMessages.last?["content"] as? String ?? "")
                 + "\n\nPrevious result:\n```yaml\n\(storedLastResponse)\n```"
                 + "\n\nPlease revise with this feedback: \(feedback)"

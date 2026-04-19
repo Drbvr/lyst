@@ -4,7 +4,7 @@ import FoundationModels
 
 // MARK: - Chat Tool wrappers for FoundationModels
 
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 private struct FMSearchNotesTool: Tool {
     let name = "search_notes"
     let description = "Search notes by text using full-text search. Use for specific terms or phrases."
@@ -23,7 +23,7 @@ private struct FMSearchNotesTool: Tool {
     }
 }
 
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 private struct FMListNotesTool: Tool {
     let name = "list_notes"
     let description = "List notes by folder, tags, or date range. Returns metadata without content."
@@ -44,7 +44,7 @@ private struct FMListNotesTool: Tool {
     }
 }
 
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 private struct FMReadNoteTool: Tool {
     let name = "read_note"
     let description = "Read the content of a note by its file path, with optional pagination."
@@ -65,7 +65,7 @@ private struct FMReadNoteTool: Tool {
     }
 }
 
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 private struct FMOutlineNoteTool: Tool {
     let name = "outline_note"
     let description = "Get the heading structure and word count of a note without its body."
@@ -82,7 +82,7 @@ private struct FMOutlineNoteTool: Tool {
     }
 }
 
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 private struct FMListRecentNotesTool: Tool {
     let name = "list_recent_notes"
     let description = "List recently modified notes. Use for temporal queries like 'what did I write yesterday'."
@@ -105,7 +105,7 @@ private struct FMListRecentNotesTool: Tool {
 
 /// LLMProvider backed by Apple Intelligence (FoundationModels).
 /// The framework drives its own tool loop; we emit synthetic stream events.
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 public final class AppleIntelligenceProvider: LLMProvider, @unchecked Sendable {
 
     public let supportsNativeTokenStreaming = false

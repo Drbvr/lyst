@@ -5,7 +5,7 @@ import PackageDescription
 
 // ListApp depends on SwiftUI/UIKit and only builds on Apple platforms.
 // Core and CoreTests are pure Foundation/XCTest and run on Linux for cheap CI.
-#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+#if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
 let platformSpecificTargets: [Target] = [
     .executableTarget(
         name: "ListApp",
@@ -22,7 +22,6 @@ let package = Package(
     name: "ListApp",
     platforms: [
         .iOS(.v17),
-        .macOS(.v14),
     ],
     products: [
         .library(

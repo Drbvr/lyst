@@ -45,7 +45,7 @@ struct ChatView: View {
 
         let provider: any LLMProvider
         if settings.processingMode == .onDevice {
-            if #available(iOS 26.0, macOS 26.0, *) {
+            if #available(iOS 26.0, *) {
                 provider = AppleIntelligenceProvider(toolRunner: runner)
             } else {
                 provider = OpenAIProvider(settings: settings)
