@@ -4,6 +4,8 @@ name: iOS Build Check
 # compile issues that Linux `swift test` cannot catch.
 
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
