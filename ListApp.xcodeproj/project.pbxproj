@@ -55,6 +55,23 @@
 		F88D77A17B05430FF89C772F /* AddSavedViewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A76AB45A9DA3B25D8602FBB1 /* AddSavedViewSheet.swift */; };
 		FB378AF6414D0F7FAECE7DAD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 37D48ECD8E9523FE66FB9C7F /* PrivacyInfo.xcprivacy */; };
 		FEA02974CA822281B5FFF09B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9F6BD350797F8512171DCE11 /* Assets.xcassets */; };
+		CAFE0000000000000000B001 /* NoteRef.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F001 /* NoteRef.swift */; };
+		CAFE0000000000000000B002 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F002 /* ChatMessage.swift */; };
+		CAFE0000000000000000B003 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F003 /* LLMProvider.swift */; };
+		CAFE0000000000000000B004 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F004 /* OpenAIProvider.swift */; };
+		CAFE0000000000000000B005 /* AppleIntelligenceProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F005 /* AppleIntelligenceProvider.swift */; };
+		CAFE0000000000000000B006 /* Chunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F006 /* Chunker.swift */; };
+		CAFE0000000000000000B007 /* EmbeddingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F007 /* EmbeddingService.swift */; };
+		CAFE0000000000000000B008 /* NoteIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F008 /* NoteIndex.swift */; };
+		CAFE0000000000000000B009 /* NoteIndexer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F009 /* NoteIndexer.swift */; };
+		CAFE0000000000000000B00A /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F00A /* ChatAgent.swift */; };
+		CAFE0000000000000000B00B /* ChatTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F00B /* ChatTools.swift */; };
+		CAFE0000000000000000B00C /* ChatToolRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F00C /* ChatToolRunner.swift */; };
+		CAFE0000000000000000B00D /* ChatPromptBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F00D /* ChatPromptBuilder.swift */; };
+		CAFE0000000000000000B00E /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F00E /* ChatView.swift */; };
+		CAFE0000000000000000B00F /* ChatMessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F00F /* ChatMessageRow.swift */; };
+		CAFE0000000000000000B010 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F010 /* ChatViewModel.swift */; };
+		CAFE0000000000000000B011 /* CitationChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F011 /* CitationChip.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -131,6 +148,23 @@
 		E8AE727A7993E82D1D7D7F89 /* ListTypeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListTypeDetailView.swift; sourceTree = "<group>"; };
 		EC6379FC2ABB5382BAC2211B /* PropertyValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyValue.swift; sourceTree = "<group>"; };
 		EE5569332D2CFE68404B4106 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F001 /* NoteRef.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRef.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F002 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F003 /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F004 /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F005 /* AppleIntelligenceProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligenceProvider.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F006 /* Chunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunker.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F007 /* EmbeddingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddingService.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F008 /* NoteIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteIndex.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F009 /* NoteIndexer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteIndexer.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F00A /* ChatAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAgent.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F00B /* ChatTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTools.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F00C /* ChatToolRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatToolRunner.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F00D /* ChatPromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatPromptBuilder.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F00E /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F00F /* ChatMessageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessageRow.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F010 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F011 /* CitationChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationChip.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -157,8 +191,11 @@
 			isa = PBXGroup;
 			children = (
 				6B8B6CD654684BA68C83F2AD /* AppleIntelligenceService.swift */,
+				CAFE0000000000000000F005 /* AppleIntelligenceProvider.swift */,
 				1FAF27187C043B4FD3C9EEE2 /* LLMService.swift */,
+				CAFE0000000000000000F003 /* LLMProvider.swift */,
 				18DD8CCF6744766E8B0F32A1 /* NoteResponseParser.swift */,
+				CAFE0000000000000000F004 /* OpenAIProvider.swift */,
 				85A84474E907996DE82622CA /* PromptBuilder.swift */,
 				94E4121FF209805389C99FF0 /* WebContentFetcher.swift */,
 				EE22FF55DD66BB77CC88AA99 /* URLSession+LinuxAsync.swift */,
@@ -205,6 +242,7 @@
 			isa = PBXGroup;
 			children = (
 				A76AB45A9DA3B25D8602FBB1 /* AddSavedViewSheet.swift */,
+				CAFE0000000000000000C003 /* Chat */,
 				4D64EA52A4DCB2A9BEBD0EFB /* ContentView.swift */,
 				86CEE3788126F5D3AEB60FAB /* CreateItemView.swift */,
 				D8C9E44477F74680A2CF1373 /* ImportView.swift */,
@@ -239,10 +277,12 @@
 		52A9481823D6DFA83A67A6DD /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				CAFE0000000000000000F002 /* ChatMessage.swift */,
 				4207785BC931F679C5B0A49D /* Item.swift */,
 				7A15E08B8474900A5995A64F /* ListType.swift */,
 				758E6F984249740C47FDC9CC /* LLMSettings.swift */,
 				CF72225D23F24288998B8630 /* NoteEdit.swift */,
+				CAFE0000000000000000F001 /* NoteRef.swift */,
 				EC6379FC2ABB5382BAC2211B /* PropertyValue.swift */,
 				12767BBCE418EF54AEFDCB6E /* View.swift */,
 			);
@@ -293,8 +333,10 @@
 				CA43CB3790ED75C37ADBDFA5 /* Core.swift */,
 				CB0CFB041A5A8834B0E18FCD /* MockData.swift */,
 				820D299BB04DB3FC4A8BE53D /* Business */,
+				CAFE0000000000000000C001 /* Chat */,
 				06F990AB32147CF648ECAC51 /* CLI */,
 				F0EDD9BDEFB3A1CE3F986B58 /* FileSystem */,
+				CAFE0000000000000000C002 /* Index */,
 				52A9481823D6DFA83A67A6DD /* Models */,
 				A1157D925BF2A1FA2653ABAA /* Parsers */,
 				08EB83D285ABABA5F23553E1 /* Services */,
@@ -326,6 +368,39 @@
 				173C171118937FC122082954 /* FileSystemManager.swift */,
 			);
 			path = FileSystem;
+			sourceTree = "<group>";
+		};
+		CAFE0000000000000000C001 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				CAFE0000000000000000F00A /* ChatAgent.swift */,
+				CAFE0000000000000000F00D /* ChatPromptBuilder.swift */,
+				CAFE0000000000000000F00C /* ChatToolRunner.swift */,
+				CAFE0000000000000000F00B /* ChatTools.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		CAFE0000000000000000C002 /* Index */ = {
+			isa = PBXGroup;
+			children = (
+				CAFE0000000000000000F006 /* Chunker.swift */,
+				CAFE0000000000000000F007 /* EmbeddingService.swift */,
+				CAFE0000000000000000F008 /* NoteIndex.swift */,
+				CAFE0000000000000000F009 /* NoteIndexer.swift */,
+			);
+			path = Index;
+			sourceTree = "<group>";
+		};
+		CAFE0000000000000000C003 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				CAFE0000000000000000F00F /* ChatMessageRow.swift */,
+				CAFE0000000000000000F010 /* ChatViewModel.swift */,
+				CAFE0000000000000000F00E /* ChatView.swift */,
+				CAFE0000000000000000F011 /* CitationChip.swift */,
+			);
+			path = Chat;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -440,6 +515,19 @@
 				6B11344F06775C7CCE05C34A /* WebContentFetcher.swift in Sources */,
 				DD33EE44FF55CC66BB77AA22 /* URLSession+LinuxAsync.swift in Sources */,
 				68B24A985CE906D46AFF565E /* YAMLParser.swift in Sources */,
+				CAFE0000000000000000B001 /* NoteRef.swift in Sources */,
+				CAFE0000000000000000B002 /* ChatMessage.swift in Sources */,
+				CAFE0000000000000000B003 /* LLMProvider.swift in Sources */,
+				CAFE0000000000000000B004 /* OpenAIProvider.swift in Sources */,
+				CAFE0000000000000000B005 /* AppleIntelligenceProvider.swift in Sources */,
+				CAFE0000000000000000B006 /* Chunker.swift in Sources */,
+				CAFE0000000000000000B007 /* EmbeddingService.swift in Sources */,
+				CAFE0000000000000000B008 /* NoteIndex.swift in Sources */,
+				CAFE0000000000000000B009 /* NoteIndexer.swift in Sources */,
+				CAFE0000000000000000B00A /* ChatAgent.swift in Sources */,
+				CAFE0000000000000000B00B /* ChatTools.swift in Sources */,
+				CAFE0000000000000000B00C /* ChatToolRunner.swift in Sources */,
+				CAFE0000000000000000B00D /* ChatPromptBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -466,6 +554,10 @@
 				836341284186D95A587A04AA /* SettingsView.swift in Sources */,
 				296E886257BC6AED229A3AC8 /* TagBrowserView.swift in Sources */,
 				98D1C9BE60144E02CAB2B1ED /* TagChipView.swift in Sources */,
+				CAFE0000000000000000B00E /* ChatView.swift in Sources */,
+				CAFE0000000000000000B00F /* ChatMessageRow.swift in Sources */,
+				CAFE0000000000000000B010 /* ChatViewModel.swift in Sources */,
+				CAFE0000000000000000B011 /* CitationChip.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -491,7 +583,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				GENERATE_INFOPLIST_FILE = YES;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -518,7 +610,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = S43L28SVX2;
 				INFOPLIST_FILE = ListApp/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -544,7 +636,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				GENERATE_INFOPLIST_FILE = YES;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -571,7 +663,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = S43L28SVX2;
 				INFOPLIST_FILE = ListApp/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -631,7 +723,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -693,7 +785,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

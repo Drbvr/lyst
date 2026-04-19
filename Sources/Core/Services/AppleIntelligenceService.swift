@@ -18,7 +18,7 @@ public enum AppleIntelligenceError: LocalizedError {
 
 // MARK: - Tools
 
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 private struct WebFetchTool: Tool {
     let name = "web_fetch"
     let description = "Fetch the readable text content of a URL. Use this when the content contains a URL you need to look up to create an accurate note."
@@ -43,7 +43,7 @@ private struct WebFetchTool: Tool {
     }
 }
 
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 private struct AskUserTool: Tool {
     let name = "ask_user"
     let description = "Ask the user a short clarifying question when the content is ambiguous and you cannot determine a required field without more information."
@@ -64,7 +64,7 @@ private struct AskUserTool: Tool {
 // MARK: - Service
 
 /// Handles on-device AI note generation using Apple Intelligence (iOS 26+).
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 public actor AppleIntelligenceService {
 
     /// Whether Apple Intelligence is enabled and available on this device.

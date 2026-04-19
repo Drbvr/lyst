@@ -219,6 +219,41 @@ public class ObsidianTodoParser: MarkdownParser {
         return nil
     }
 
+    // MARK: - Heading Extraction
+
+    /// Extracts ATX headings (# through ######) from markdown content.
+    /// Returns an array of (level, text, startLine) tuples, zero-indexed.
+    /// Does not enter fenced code blocks.
+    public func extractHeadings(from content: String) -> [(level: Int, text: String, startLine: Int)] {
+        let lines = content.components(separatedBy: .newlines)
+        var headings: [(level: Int, text: String, startLine: Int)] = []
+        var inCodeBlock = false
+
+        for (lineNumber, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") {
+                inCodeBlock.toggle()
+                continue
+            }
+            if inCodeBlock { continue }
+
+            var level = 0
+            for ch in trimmed {
+                if ch == "#" { level += 1 } else { break }
+            }
+            if level >= 1 && level <= 6 && trimmed.count > level {
+                let afterHashes = trimmed.dropFirst(level)
+                if afterHashes.first == " " || afterHashes.first == "\t" {
+                    let headingText = afterHashes.trimmingCharacters(in: .whitespaces)
+                    if !headingText.isEmpty {
+                        headings.append((level: level, text: headingText, startLine: lineNumber))
+                    }
+                }
+            }
+        }
+        return headings
+    }
+
     // MARK: - YAML Frontmatter Item Creation
 
     /// Creates a single Item from YAML frontmatter (for books, movies, notes, etc.)

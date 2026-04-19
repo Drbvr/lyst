@@ -1,0 +1,215 @@
+import Foundation
+
+// MARK: - Chat events emitted to the UI
+
+public enum ChatEvent: Sendable {
+    case assistantDelta(String)
+    case toolCallStart(id: String, name: String)
+    case toolCallComplete(id: String, result: String)
+    case done(citations: [NoteRef])
+    case budgetExceeded(iterationCount: Int)
+    case cancelled
+    case failure(String)
+}
+
+// MARK: - ChatAgent
+
+/// Drives the provider's tool-use loop, dispatches tool calls concurrently,
+/// and emits ChatEvents for the UI to consume.
+public actor ChatAgent {
+
+    private let provider: any LLMProvider
+    private let toolRunner: ChatToolRunner
+    private let maxIterations: Int
+
+    private var currentTask: Task<Void, Never>?
+
+    public init(
+        provider: any LLMProvider,
+        toolRunner: ChatToolRunner,
+        maxIterations: Int = 8
+    ) {
+        self.provider = provider
+        self.toolRunner = toolRunner
+        self.maxIterations = maxIterations
+    }
+
+    /// Run one user turn. Calls `onEvent` for every stream event until `.done` or `.cancelled`.
+    public func run(
+        messages: [ChatMessage],
+        vaultName: String,
+        noteCount: Int,
+        onEvent: @escaping @Sendable (ChatEvent) async -> Void
+    ) async {
+        let task = Task {
+            await self.executeLoop(
+                messages: messages,
+                vaultName: vaultName,
+                noteCount: noteCount,
+                onEvent: onEvent
+            )
+        }
+        currentTask = task
+        await task.value
+        currentTask = nil
+    }
+
+    public func cancel() {
+        currentTask?.cancel()
+        provider.cancel()
+    }
+
+    // MARK: - Loop
+
+    private func executeLoop(
+        messages: [ChatMessage],
+        vaultName: String,
+        noteCount: Int,
+        onEvent: @escaping @Sendable (ChatEvent) async -> Void
+    ) async {
+        var transcript = buildTranscript(messages: messages, vaultName: vaultName, noteCount: noteCount)
+        var allCitations: [NoteRef] = []
+        var iterationCount = 0
+
+        while iterationCount < maxIterations {
+            guard !Task.isCancelled else {
+                await onEvent(.cancelled)
+                return
+            }
+
+            iterationCount += 1
+            let stream = provider.streamStep(messages: transcript, tools: ChatTools.all)
+
+            var assistantText = ""
+            var pendingCalls: [ToolCallRequest] = []
+            var finishReason: FinishReason = .stop
+
+            do {
+                for try await event in stream {
+                    guard !Task.isCancelled else { break }
+
+                    switch event {
+                    case .assistantDelta(let delta):
+                        assistantText += delta
+                        await onEvent(.assistantDelta(delta))
+
+                    case .toolCallStart(let req):
+                        await onEvent(.toolCallStart(id: req.id, name: req.name))
+
+                    case .toolCallArgsDelta:
+                        break  // UI can optionally show streaming args
+
+                    case .toolCallComplete(let id):
+                        _ = id  // handled on finish
+
+                    case .finish(let reason):
+                        finishReason = reason
+                    }
+                }
+            } catch {
+                if Task.isCancelled {
+                    await onEvent(.cancelled)
+                } else {
+                    await onEvent(.failure(error.localizedDescription))
+                }
+                return
+            }
+
+            if Task.isCancelled {
+                await onEvent(.cancelled)
+                return
+            }
+
+            // Append assistant turn to transcript
+            switch finishReason {
+            case .toolCalls(let calls):
+                pendingCalls = calls
+                transcript.append(.assistantToolCalls(content: assistantText.isEmpty ? nil : assistantText,
+                                                       calls: calls))
+
+            case .stop, .maxTokens, .cancelled:
+                if !assistantText.isEmpty {
+                    transcript.append(.assistant(content: assistantText))
+                }
+                await onEvent(.done(citations: Array(Set(allCitations))))
+                return
+            }
+
+            // No tool calls despite toolCalls finish reason — treat as stop
+            if pendingCalls.isEmpty {
+                await onEvent(.done(citations: Array(Set(allCitations))))
+                return
+            }
+
+            // Execute tool calls concurrently
+            var toolResults: [(callId: String, result: String)] = []
+            var stepRefs: [NoteRef] = []
+
+            await withTaskGroup(of: (callId: String, result: String, refs: [NoteRef]).self) { group in
+                for call in pendingCalls {
+                    group.addTask {
+                        let (result, refs) = await self.toolRunner.run(
+                            name: call.name,
+                            argumentsJSON: call.argumentsJSON
+                        )
+                        return (call.id, result, refs)
+                    }
+                }
+                for await outcome in group {
+                    toolResults.append((outcome.callId, outcome.result))
+                    stepRefs.append(contentsOf: outcome.refs)
+                    await onEvent(.toolCallComplete(id: outcome.callId, result: outcome.result))
+                }
+            }
+
+            allCitations.append(contentsOf: stepRefs)
+
+            // Append tool results to transcript
+            for (callId, result) in toolResults {
+                transcript.append(.toolResult(callId: callId, content: result))
+            }
+        }
+
+        // Budget exceeded
+        await onEvent(.budgetExceeded(iterationCount: iterationCount))
+    }
+
+    // MARK: - Helpers
+
+    private func buildTranscript(messages: [ChatMessage], vaultName: String, noteCount: Int) -> [LLMChatMessage] {
+        var transcript: [LLMChatMessage] = [
+            .system(ChatPromptBuilder.systemPrompt(vaultName: vaultName, noteCount: noteCount))
+        ]
+        for msg in messages {
+            switch msg.role {
+            case .user:
+                transcript.append(.user(msg.content))
+            case .assistant:
+                if msg.toolCalls.isEmpty {
+                    transcript.append(.assistant(content: msg.content))
+                } else {
+                    let calls = msg.toolCalls.map { tc in
+                        ToolCallRequest(id: tc.id, name: tc.name, argumentsJSON: tc.argumentsJSON)
+                    }
+                    transcript.append(.assistantToolCalls(content: msg.content.isEmpty ? nil : msg.content,
+                                                           calls: calls))
+                    for tc in msg.toolCalls {
+                        let result = tc.resultJSON ?? tc.errorMessage.map(Self.encodeErrorJSON) ?? "{}"
+                        transcript.append(.toolResult(callId: tc.id, content: result))
+                    }
+                }
+            case .tool, .system:
+                break  // handled above or skip
+            }
+        }
+        return transcript
+    }
+
+    private static func encodeErrorJSON(_ message: String) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: ["error": message]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"error\":\"unknown\"}"
+        }
+        return str
+    }
+}
