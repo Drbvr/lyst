@@ -30,10 +30,12 @@ final class ChatViewModel {
         let userMsg = ChatMessage(role: .user, content: text)
         messages.append(userMsg)
 
-        // Placeholder assistant message streamed into
-        var assistantMsg = ChatMessage(role: .assistant)
+        // Placeholder assistant message streamed into — lookup by id each
+        // callback so concurrent mutations (e.g. clearHistory) can't cause
+        // out-of-bounds writes.
+        let assistantMsg = ChatMessage(role: .assistant)
+        let assistantId = assistantMsg.id
         messages.append(assistantMsg)
-        let assistantIndex = messages.count - 1
 
         await agent.run(
             messages: Array(messages.dropLast()),  // exclude the empty placeholder
@@ -42,22 +44,30 @@ final class ChatViewModel {
         ) { [weak self] event in
             guard let self else { return }
             await MainActor.run {
+                guard let idx = self.messages.firstIndex(where: { $0.id == assistantId }) else {
+                    // Assistant placeholder was removed (e.g. history cleared). Drop the event.
+                    if case .done = event { self.isGenerating = false }
+                    if case .cancelled = event { self.isGenerating = false }
+                    if case .budgetExceeded = event { self.isGenerating = false }
+                    if case .failure = event { self.isGenerating = false }
+                    return
+                }
                 switch event {
                 case .assistantDelta(let delta):
-                    self.messages[assistantIndex].content += delta
+                    self.messages[idx].content += delta
 
                 case .toolCallStart(let id, let name):
                     let record = ToolCallRecord(id: id, name: name, argumentsJSON: "")
-                    self.messages[assistantIndex].toolCalls.append(record)
+                    self.messages[idx].toolCalls.append(record)
 
                 case .toolCallComplete(let id, let result):
-                    if let idx = self.messages[assistantIndex].toolCalls.firstIndex(where: { $0.id == id }) {
-                        self.messages[assistantIndex].toolCalls[idx].resultJSON = result
-                        self.messages[assistantIndex].toolCalls[idx].isRunning = false
+                    if let tci = self.messages[idx].toolCalls.firstIndex(where: { $0.id == id }) {
+                        self.messages[idx].toolCalls[tci].resultJSON = result
+                        self.messages[idx].toolCalls[tci].isRunning = false
                     }
 
                 case .done(let citations):
-                    self.messages[assistantIndex].citations = citations
+                    self.messages[idx].citations = citations
                     self.isGenerating = false
 
                 case .budgetExceeded(let count):
@@ -69,7 +79,7 @@ final class ChatViewModel {
                     self.isGenerating = false
 
                 case .failure(let msg):
-                    self.messages[assistantIndex].content += "\n\n⚠️ Error: \(msg)"
+                    self.messages[idx].content += "\n\n⚠️ Error: \(msg)"
                     self.isGenerating = false
                 }
             }

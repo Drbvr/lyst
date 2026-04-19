@@ -61,11 +61,10 @@ class AppState {
         self.vaultDisplayName = UserDefaults.standard.string(forKey: "vaultDisplayName") ?? "ListAppVault"
         self.llmSettings = LLMSettings.load()
 
-        // Load real files asynchronously in the background
+        // Load vault items first so currentVaultURL is set before the index
+        // is built on top of it — otherwise the cold-start index is empty.
         Task {
             await loadItemsFromVault()
-        }
-        Task {
             await openIndex()
         }
     }

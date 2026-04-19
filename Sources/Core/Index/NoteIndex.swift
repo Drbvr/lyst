@@ -135,8 +135,10 @@ public actor NoteIndex {
     public func upsertChunks(_ chunks: [NoteChunk], forFile path: String,
                               embedding: EmbeddingProvider) {
         guard let db else { return }
-        exec(db, "DELETE FROM chunks WHERE file=?", path)
+        // chunk_vectors has ON DELETE CASCADE on chunks.chunk_id, but cascade
+        // requires foreign_keys=ON; delete vectors first explicitly to be safe.
         exec(db, "DELETE FROM chunk_vectors WHERE chunk_id IN (SELECT chunk_id FROM chunks WHERE file=?)", path)
+        exec(db, "DELETE FROM chunks WHERE file=?", path)
 
         for chunk in chunks {
             exec(db, """
@@ -237,7 +239,7 @@ public actor NoteIndex {
                 var out = [Float]()
                 out.reserveCapacity(dim)
                 for i in 0..<dim {
-                    out.append(rawBuf.load(fromByteOffset: i * floatSize, as: Float.self))
+                    out.append(rawBuf.loadUnaligned(fromByteOffset: i * floatSize, as: Float.self))
                 }
                 return out
             }

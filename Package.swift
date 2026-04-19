@@ -20,6 +20,9 @@ let platformSpecificTargets: [Target] = []
 
 let package = Package(
     name: "ListApp",
+    // Linux CI uses Swift 5.10, whose PackageDescription tops out at .v17.
+    // The Xcode project's IPHONEOS_DEPLOYMENT_TARGET=26.0 is the authoritative
+    // deployment target for the app; this value is only the SPM floor.
     platforms: [
         .iOS(.v17),
     ],

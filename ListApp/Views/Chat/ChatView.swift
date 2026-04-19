@@ -14,7 +14,7 @@ struct ChatView: View {
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {
                             Button("Clear") { vm.clearHistory() }
-                                .disabled(vm.messages.isEmpty)
+                                .disabled(vm.messages.isEmpty || vm.isGenerating)
                         }
                         ToolbarItem(placement: .navigationBarTrailing) {
                             providerPill

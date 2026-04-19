@@ -218,16 +218,17 @@ public actor ChatToolRunner {
         return str
     }
 
+    /// Replaces oversized results with a valid-JSON placeholder that preserves
+    /// the tool output contract. Callers are expected to paginate (e.g. via
+    /// `read_note` offset/limit) rather than rely on truncated mid-stream JSON.
     private func truncated(_ str: String) -> String {
         guard str.utf8.count > maxResultBytes else { return str }
-        let truncMsg = "\n...(truncated, \(str.utf8.count) bytes total. Use read_note with offset to continue.)"
-        let targetBytes = maxResultBytes - truncMsg.utf8.count
-        guard targetBytes > 0 else { return truncMsg }
-        let utf8 = str.utf8
-        let endOffset = min(targetBytes, utf8.count)
-        let endIdx = utf8.index(utf8.startIndex, offsetBy: endOffset)
-        let prefix = String(decoding: utf8[utf8.startIndex..<endIdx], as: UTF8.self)
-        return prefix + truncMsg
+        return json([
+            "truncated": true,
+            "original_byte_count": str.utf8.count,
+            "max_result_bytes": maxResultBytes,
+            "detail": "Result exceeded \(maxResultBytes) bytes. Narrow the query (smaller limit, specific folder/tag) or use read_note with offset to paginate."
+        ])
     }
 
     private func errorJSON(_ code: String, _ detail: String) -> String {

@@ -156,14 +156,6 @@ public final class AppleIntelligenceProvider: LLMProvider, @unchecked Sendable {
             if case .system(let t) = $0 { return t } else { return nil }
         }.joined(separator: "\n")
 
-        let userMessages = messages.filter {
-            if case .user = $0 { return true }
-            if case .assistant = $0 { return true }
-            if case .assistantToolCalls = $0 { return true }
-            if case .toolResult = $0 { return true }
-            return false
-        }
-
         // Fresh session per streamStep — avoids state leaking across conversations
         // and ensures any system-prompt change takes effect.
         let fmTools: [any Tool] = [
@@ -175,20 +167,42 @@ public final class AppleIntelligenceProvider: LLMProvider, @unchecked Sendable {
         ]
         let sess = LanguageModelSession(tools: fmTools, instructions: systemPrompt)
 
-        // Extract the last user message
-        let lastUserText: String
-        if case .user(let t) = userMessages.last {
-            lastUserText = t
-        } else {
-            lastUserText = "Please help."
-        }
+        // LanguageModelSession only accepts a single `respond(to:)` input, so
+        // serialise prior user/assistant turns into a transcript preamble so
+        // multi-turn context isn't lost. Tool-result turns are dropped — the
+        // framework drives its own tool loop and re-runs tools on the next turn.
+        let prompt = Self.buildPrompt(from: messages)
 
-        let response = try await sess.respond(to: lastUserText)
+        let response = try await sess.respond(to: prompt)
         let text = response.content
 
         continuation.yield(.assistantDelta(text))
         continuation.yield(.finish(.stop))
         continuation.finish()
+    }
+
+    private static func buildPrompt(from messages: [LLMChatMessage]) -> String {
+        var turns: [(role: String, text: String)] = []
+        for msg in messages {
+            switch msg {
+            case .user(let t):
+                turns.append(("User", t))
+            case .assistant(let t):
+                if let t, !t.isEmpty { turns.append(("Assistant", t)) }
+            case .assistantToolCalls(let content, _):
+                if let content, !content.isEmpty { turns.append(("Assistant", content)) }
+            case .system, .toolResult:
+                continue
+            }
+        }
+        guard let last = turns.last, last.role == "User" else {
+            return turns.last?.text ?? "Please help."
+        }
+        if turns.count == 1 { return last.text }
+        let history = turns.dropLast()
+            .map { "\($0.role): \($0.text)" }
+            .joined(separator: "\n\n")
+        return "Conversation so far:\n\n\(history)\n\nCurrent question:\n\(last.text)"
     }
 }
 
