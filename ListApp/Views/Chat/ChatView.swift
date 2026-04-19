@@ -149,7 +149,8 @@ private struct ChatConversationView: View {
                         .font(.title2)
                         .foregroundStyle(
                             viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? .tertiary : .accent
+                            ? AnyShapeStyle(.tertiary)
+                            : AnyShapeStyle(Color.accentColor)
                         )
                 }
                 .disabled(viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
