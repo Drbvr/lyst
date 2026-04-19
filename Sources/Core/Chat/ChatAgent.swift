@@ -39,7 +39,7 @@ public actor ChatAgent {
         messages: [ChatMessage],
         vaultName: String,
         noteCount: Int,
-        onEvent: @Sendable (ChatEvent) async -> Void
+        onEvent: @escaping @Sendable (ChatEvent) async -> Void
     ) async {
         let task = Task {
             await self.executeLoop(
@@ -65,7 +65,7 @@ public actor ChatAgent {
         messages: [ChatMessage],
         vaultName: String,
         noteCount: Int,
-        onEvent: @Sendable (ChatEvent) async -> Void
+        onEvent: @escaping @Sendable (ChatEvent) async -> Void
     ) async {
         var transcript = buildTranscript(messages: messages, vaultName: vaultName, noteCount: noteCount)
         var allCitations: [NoteRef] = []

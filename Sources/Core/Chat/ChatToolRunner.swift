@@ -70,15 +70,15 @@ public actor ChatToolRunner {
     public func runRaw<A>(name: String, args: A) async -> String where A: Sendable {
         switch args {
         case let a as SearchNotesArgs:
-            return await runSearchNotes(a).result
+            return await runSearchNotes(a).0
         case let a as ListNotesArgs:
-            return await runListNotes(a).result
+            return await runListNotes(a).0
         case let a as ReadNoteArgs:
-            return await runReadNote(a).result
+            return await runReadNote(a).0
         case let a as OutlineNoteArgs:
-            return await runOutlineNote(a).result
+            return await runOutlineNote(a).0
         case let a as ListRecentNotesArgs:
-            return await runListRecentNotes(a).result
+            return await runListRecentNotes(a).0
         default:
             return errorJSON("unsupported_args", "Unrecognised argument type")
         }
