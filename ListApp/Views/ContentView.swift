@@ -69,13 +69,19 @@ struct ContentView: View {
             }
             .tag(4)
 
+            ChatView()
+            .tabItem {
+                Label("Chat", systemImage: "bubble.left.and.bubble.right")
+            }
+            .tag(5)
+
             NavigationStack {
                 SettingsView()
             }
             .tabItem {
                 Label("Settings", systemImage: "gear")
             }
-            .tag(5)
+            .tag(6)
         }
         .onChange(of: selectedTab) { _, newTab in
             if newTab == 2 {

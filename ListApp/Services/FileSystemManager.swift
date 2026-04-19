@@ -14,6 +14,7 @@ class AppFileSystemManager {
 
     private let coreFileSystem: FileSystemManager
     private let todoParser = ObsidianTodoParser()
+    var noteIndexer: NoteIndexer?
 
     init(fileSystem: FileSystemManager = DefaultFileSystemManager()) {
         self.coreFileSystem = fileSystem
@@ -95,7 +96,11 @@ class AppFileSystemManager {
         }
 
         guard let newContent = updated else { return false }
-        return writeOrReport(newContent, to: item.sourceFile)
+        let ok = writeOrReport(newContent, to: item.sourceFile)
+        if ok, let indexer = noteIndexer {
+            Task { await indexer.upsertFile(path: item.sourceFile, fileSystem: coreFileSystem) }
+        }
+        return ok
     }
 
     /// Write an item back to its source file (update properties).
@@ -118,7 +123,11 @@ class AppFileSystemManager {
             error = "Invalid YAML frontmatter"
             return false
         }
-        return writeOrReport(newContent, to: item.sourceFile)
+        let ok = writeOrReport(newContent, to: item.sourceFile)
+        if ok, let indexer = noteIndexer {
+            Task { await indexer.upsertFile(path: item.sourceFile, fileSystem: coreFileSystem) }
+        }
+        return ok
     }
 
     /// Delete an item from its source file.
@@ -135,6 +144,9 @@ class AppFileSystemManager {
         if content.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("---") {
             do {
                 try FileManager.default.removeItem(atPath: item.sourceFile)
+                if let indexer = noteIndexer {
+                    Task { await indexer.removeFile(path: item.sourceFile) }
+                }
                 return true
             } catch {
                 self.error = "Failed to delete file: \(error.localizedDescription)"
@@ -146,7 +158,11 @@ class AppFileSystemManager {
             error = "Could not find item '\(item.title)' in source file"
             return false
         }
-        return writeOrReport(newContent, to: item.sourceFile)
+        let ok = writeOrReport(newContent, to: item.sourceFile)
+        if ok, let indexer = noteIndexer {
+            Task { await indexer.upsertFile(path: item.sourceFile, fileSystem: coreFileSystem) }
+        }
+        return ok
     }
 
     // MARK: - Private

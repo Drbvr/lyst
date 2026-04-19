@@ -41,6 +41,14 @@ class AppState {
     private let tagHierarchyHelper = TagHierarchy()
     private let coreFileSystem: FileSystemManager
     private let fileSystemManager: AppFileSystemManager
+    var noteIndex: NoteIndex = NoteIndex(dbURL: AppState.defaultIndexURL())
+    private var noteIndexer: NoteIndexer?
+
+    private static func defaultIndexURL() -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("ListAppVault/.listapp/index.sqlite")
+            ?? URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("index.sqlite")
+    }
 
     init(fileSystem: FileSystemManager = DefaultFileSystemManager()) {
         self.coreFileSystem = fileSystem
@@ -57,6 +65,30 @@ class AppState {
         Task {
             await loadItemsFromVault()
         }
+        Task {
+            await openIndex()
+        }
+    }
+
+    private func openIndex() async {
+        try? await noteIndex.open()
+        let indexer = NoteIndexer(index: noteIndex)
+        noteIndexer = indexer
+        fileSystemManager.noteIndexer = indexer
+        if let vault = currentVaultURL {
+            await indexer.buildInitialIndex(vaultURL: vault, fileSystem: coreFileSystem)
+        }
+    }
+
+    /// Rebuild the index for a new vault URL.
+    func rebuildIndex(for vaultURL: URL) async {
+        let newURL = vaultURL.appendingPathComponent(".listapp/index.sqlite")
+        noteIndex = NoteIndex(dbURL: newURL)
+        try? await noteIndex.open()
+        let indexer = NoteIndexer(index: noteIndex)
+        noteIndexer = indexer
+        fileSystemManager.noteIndexer = indexer
+        await indexer.buildInitialIndex(vaultURL: vaultURL, fileSystem: coreFileSystem)
     }
 
     /// Load from a security-scoped URL (iCloud Drive or external folder picker).
@@ -76,6 +108,7 @@ class AppState {
 
         Task {
             await reloadItems(from: url)
+            await rebuildIndex(for: url)
             if accessing {
                 url.stopAccessingSecurityScopedResource()
             }
