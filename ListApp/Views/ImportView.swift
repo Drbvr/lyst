@@ -68,6 +68,7 @@ final class ImportViewModel {
         devLog = []
 
         if #available(iOS 26, *), settings.processingMode == .onDevice {
+            #if canImport(FoundationModels)
             if AppleIntelligenceService.isAvailable {
                 await processWithAppleIntelligence(
                     listTypes: listTypes, items: items,
@@ -76,6 +77,9 @@ final class ImportViewModel {
             } else {
                 errorMessage = AppleIntelligenceError.unavailable.localizedDescription
             }
+            #else
+            errorMessage = AppleIntelligenceError.unavailable.localizedDescription
+            #endif
         } else {
             await processWithPersonalLLM(settings: settings, listTypes: listTypes, items: items)
         }
@@ -278,6 +282,7 @@ final class ImportViewModel {
         let promptBuilder = PromptBuilder()
 
         if #available(iOS 26, *), generatedWithOnDevice {
+            #if canImport(FoundationModels)
             let enhanced = (storedMessages.last?["content"] as? String ?? "")
                 + "\n\nPrevious result:\n```yaml\n\(storedLastResponse)\n```"
                 + "\n\nPlease revise with this feedback: \(feedback)"
@@ -294,6 +299,9 @@ final class ImportViewModel {
             } catch {
                 errorMessage = error.localizedDescription
             }
+            #else
+            errorMessage = AppleIntelligenceError.unavailable.localizedDescription
+            #endif
         } else {
             var msgs = storedMessages
             msgs.append(["role": "assistant", "content": storedLastResponse])
