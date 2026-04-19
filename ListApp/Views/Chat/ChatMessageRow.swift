@@ -75,7 +75,7 @@ struct ChatMessageRow: View {
     private var citationsView: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(message.citations, id: \.file) { ref in
+                ForEach(message.citations, id: \.self) { ref in
                     CitationChip(ref: ref)
                 }
             }

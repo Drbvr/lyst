@@ -82,6 +82,7 @@ class AppState {
 
     /// Rebuild the index for a new vault URL.
     func rebuildIndex(for vaultURL: URL) async {
+        await noteIndex.close()
         let newURL = vaultURL.appendingPathComponent(".listapp/index.sqlite")
         noteIndex = NoteIndex(dbURL: newURL)
         try? await noteIndex.open()

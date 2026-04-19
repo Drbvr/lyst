@@ -4,7 +4,6 @@ import Core
 struct CitationChip: View {
     let ref: NoteRef
     @Environment(AppState.self) private var appState
-    @Environment(\.dismiss) private var dismiss
 
     private var matchingItem: Item? {
         appState.items.first { $0.sourceFile == ref.file }

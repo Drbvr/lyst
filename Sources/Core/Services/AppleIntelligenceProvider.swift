@@ -111,7 +111,6 @@ public final class AppleIntelligenceProvider: LLMProvider, @unchecked Sendable {
     public let supportsNativeTokenStreaming = false
 
     private let toolRunner: ChatToolRunner
-    private var session: LanguageModelSession?
     private let lock = NSLock()
     private var activeTask: Task<Void, Never>?
 
@@ -165,7 +164,8 @@ public final class AppleIntelligenceProvider: LLMProvider, @unchecked Sendable {
             return false
         }
 
-        // Build or reuse session
+        // Fresh session per streamStep — avoids state leaking across conversations
+        // and ensures any system-prompt change takes effect.
         let fmTools: [any Tool] = [
             FMSearchNotesTool(runner: toolRunner),
             FMListNotesTool(runner: toolRunner),
@@ -173,11 +173,7 @@ public final class AppleIntelligenceProvider: LLMProvider, @unchecked Sendable {
             FMOutlineNoteTool(runner: toolRunner),
             FMListRecentNotesTool(runner: toolRunner)
         ]
-
-        if session == nil {
-            session = LanguageModelSession(tools: fmTools, instructions: systemPrompt)
-        }
-        guard let sess = session else { return }
+        let sess = LanguageModelSession(tools: fmTools, instructions: systemPrompt)
 
         // Extract the last user message
         let lastUserText: String

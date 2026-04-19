@@ -7,7 +7,7 @@ public enum ChatEvent: Sendable {
     case toolCallStart(id: String, name: String)
     case toolCallComplete(id: String, result: String)
     case done(citations: [NoteRef])
-    case budgetExceeded(toolCallCount: Int)
+    case budgetExceeded(iterationCount: Int)
     case cancelled
     case failure(String)
 }
@@ -171,7 +171,7 @@ public actor ChatAgent {
         }
 
         // Budget exceeded
-        await onEvent(.budgetExceeded(toolCallCount: iterationCount))
+        await onEvent(.budgetExceeded(iterationCount: iterationCount))
     }
 
     // MARK: - Helpers
@@ -194,7 +194,7 @@ public actor ChatAgent {
                     transcript.append(.assistantToolCalls(content: msg.content.isEmpty ? nil : msg.content,
                                                            calls: calls))
                     for tc in msg.toolCalls {
-                        let result = tc.resultJSON ?? tc.errorMessage.map { "{\"error\":\"\($0)\"}" } ?? "{}"
+                        let result = tc.resultJSON ?? tc.errorMessage.map(Self.encodeErrorJSON) ?? "{}"
                         transcript.append(.toolResult(callId: tc.id, content: result))
                     }
                 }
@@ -203,5 +203,13 @@ public actor ChatAgent {
             }
         }
         return transcript
+    }
+
+    private static func encodeErrorJSON(_ message: String) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: ["error": message]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"error\":\"unknown\"}"
+        }
+        return str
     }
 }

@@ -76,9 +76,6 @@ private struct ChatConversationView: View {
                             ChatMessageRow(message: msg)
                                 .id(msg.id)
                         }
-                        if viewModel.isGenerating && viewModel.messages.last?.role == .user {
-                            thinkingIndicator
-                        }
                         if viewModel.budgetExceeded {
                             budgetBanner
                         }
@@ -106,25 +103,10 @@ private struct ChatConversationView: View {
         }
     }
 
-    private var thinkingIndicator: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .frame(width: 6, height: 6)
-                    .foregroundStyle(Color.secondary.opacity(0.6))
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .padding(.horizontal, 12)
-    }
-
     private var budgetBanner: some View {
         HStack {
             Image(systemName: "exclamationmark.triangle")
-            Text("Stopped after \(viewModel.budgetExceededCount) tool calls.")
+            Text("Stopped after \(viewModel.budgetExceededIterationCount) iterations.")
             Spacer()
             Button("Resume") {
                 Task { await viewModel.resume() }

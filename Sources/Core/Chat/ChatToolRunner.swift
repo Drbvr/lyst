@@ -139,27 +139,30 @@ public actor ChatToolRunner {
 
         let offset = args.offset ?? 0
         let maxChars = args.limit ?? 4_000
-        let chars = Array(content.unicodeScalars)
+        let scalars = content.unicodeScalars
+        let totalChars = scalars.count
 
-        guard offset < chars.count else {
-            return (json(["content": "", "truncated": false, "total_chars": chars.count]), [NoteRef(file: file)])
+        guard offset < totalChars else {
+            return (json(["content": "", "truncated": false, "total_chars": totalChars]), [NoteRef(file: file)])
         }
 
-        let end = min(offset + maxChars, chars.count)
-        let slice = String(String.UnicodeScalarView(chars[offset..<end]))
-        let truncated = end < chars.count
+        let startIdx = scalars.index(scalars.startIndex, offsetBy: offset, limitedBy: scalars.endIndex) ?? scalars.endIndex
+        let end = min(offset + maxChars, totalChars)
+        let endIdx = scalars.index(startIdx, offsetBy: end - offset, limitedBy: scalars.endIndex) ?? scalars.endIndex
+        let slice = String(String.UnicodeScalarView(scalars[startIdx..<endIdx]))
+        let truncated = end < totalChars
 
         var result: [String: Any] = [
             "file": file,
             "content": slice,
             "truncated": truncated,
             "offset": offset,
-            "total_chars": chars.count
+            "total_chars": totalChars
         ]
 
         // Append outline of remainder when truncated
         if truncated {
-            let remainder = String(String.UnicodeScalarView(chars[end...]))
+            let remainder = String(String.UnicodeScalarView(scalars[endIdx...]))
             let headings = parser.extractHeadings(from: remainder)
             let outline = headings.prefix(20).map { h -> [String: Any] in
                 ["level": h.level, "heading": h.text, "approx_offset": end + (h.startLine * 80)]

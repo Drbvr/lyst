@@ -227,13 +227,19 @@ public actor NoteIndex {
             let dim = Int(sqlite3_column_int(stmt, 6))
             let title = String(cString: sqlite3_column_text(stmt, 7))
 
+            let floatSize = MemoryLayout<Float>.size
             guard dim == queryVec.count,
+                  blobLen == dim * floatSize,
                   let blobPtr = sqlite3_column_blob(stmt, 5) else { continue }
 
             let vecData = Data(bytes: blobPtr, count: blobLen)
-            let vec = vecData.withUnsafeBytes { ptr -> [Float] in
-                let floats = ptr.bindMemory(to: Float.self)
-                return Array(floats)
+            let vec = vecData.withUnsafeBytes { rawBuf -> [Float] in
+                var out = [Float]()
+                out.reserveCapacity(dim)
+                for i in 0..<dim {
+                    out.append(rawBuf.load(fromByteOffset: i * floatSize, as: Float.self))
+                }
+                return out
             }
 
             let score = cosineSimilarity(queryVec, vec)

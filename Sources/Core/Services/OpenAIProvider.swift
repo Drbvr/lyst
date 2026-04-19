@@ -121,17 +121,24 @@ public final class OpenAIProvider: LLMProvider, @unchecked Sendable {
                     let namePart = fn?["name"] as? String ?? ""
                     let argsPart = fn?["arguments"] as? String ?? ""
 
+                    let merged: (id: String, name: String, args: String)
                     if var existing = pendingCalls[idx] {
+                        if let id, !id.isEmpty { existing.id = id }
+                        if !namePart.isEmpty { existing.name = namePart }
                         existing.args += argsPart
                         pendingCalls[idx] = existing
+                        merged = existing
                     } else {
-                        let newId = id ?? "call_\(idx)"
-                        pendingCalls[idx] = (id: newId, name: namePart, args: argsPart)
-                        if !namePart.isEmpty {
-                            let req = ToolCallRequest(id: newId, name: namePart, argumentsJSON: "")
-                            continuation.yield(.toolCallStart(req))
-                            emittedCallIds[idx] = newId
-                        }
+                        let newId = (id?.isEmpty == false) ? id! : "call_\(idx)"
+                        let newCall = (id: newId, name: namePart, args: argsPart)
+                        pendingCalls[idx] = newCall
+                        merged = newCall
+                    }
+
+                    if emittedCallIds[idx] == nil, !merged.name.isEmpty {
+                        let req = ToolCallRequest(id: merged.id, name: merged.name, argumentsJSON: "")
+                        continuation.yield(.toolCallStart(req))
+                        emittedCallIds[idx] = merged.id
                     }
                     if !argsPart.isEmpty, let callId = emittedCallIds[idx] {
                         continuation.yield(.toolCallArgsDelta(id: callId, json: argsPart))
@@ -210,8 +217,7 @@ private struct SSELineStream: AsyncSequence {
         let session: URLSession
         private var bytesIterator: URLSession.AsyncBytes.Iterator?
         private var started = false
-        private var buffer = ""
-        private var byteStream: URLSession.AsyncBytes?
+        private var lineBytes: [UInt8] = []
 
         init(request: URLRequest, session: URLSession) {
             self.request = request
@@ -227,7 +233,6 @@ private struct SSELineStream: AsyncSequence {
                     for try await char in bytes.characters { body.append(char) }
                     throw LLMError.httpError(http.statusCode, body)
                 }
-                byteStream = bytes
                 bytesIterator = bytes.makeAsyncIterator()
             }
 
@@ -238,14 +243,13 @@ private struct SSELineStream: AsyncSequence {
                     return nil
                 }
                 bytesIterator = it
-                let char = Character(UnicodeScalar(byte))
-                if char == "\n" {
-                    let line = buffer
-                    buffer = ""
+                if byte == 0x0A { // \n
+                    let line = String(decoding: lineBytes, as: UTF8.self)
+                    lineBytes.removeAll(keepingCapacity: true)
                     if !line.isEmpty { return line }
                     // Empty line = SSE event boundary, continue
-                } else if char != "\r" {
-                    buffer.append(char)
+                } else if byte != 0x0D { // skip \r
+                    lineBytes.append(byte)
                 }
             }
         }

@@ -9,7 +9,7 @@ final class ChatViewModel {
     var inputText: String = ""
     var isGenerating: Bool = false
     var budgetExceeded: Bool = false
-    var budgetExceededCount: Int = 0
+    var budgetExceededIterationCount: Int = 0
 
     private let agent: ChatAgent
     private let appState: AppState
@@ -62,7 +62,7 @@ final class ChatViewModel {
 
                 case .budgetExceeded(let count):
                     self.budgetExceeded = true
-                    self.budgetExceededCount = count
+                    self.budgetExceededIterationCount = count
                     self.isGenerating = false
 
                 case .cancelled:
