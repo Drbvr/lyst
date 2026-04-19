@@ -3,6 +3,8 @@ import Foundation
 import FoundationNetworking
 #endif
 
+#if canImport(Darwin)
+
 /// LLMProvider backed by any OpenAI-compatible SSE streaming endpoint.
 public final class OpenAIProvider: LLMProvider, @unchecked Sendable {
 
@@ -253,3 +255,32 @@ private struct SSELineStream: AsyncSequence {
         AsyncIterator(request: request, session: session)
     }
 }
+
+#else
+
+// MARK: - Linux stub
+// URLSession.bytes(for:) / AsyncBytes aren't in swift-corelibs-foundation,
+// so on Linux the SSE streaming provider only exists as a stub that throws.
+// No Core code or CoreTests consume OpenAIProvider directly; it's wired up
+// from the iOS-only ListApp target.
+
+public final class OpenAIProvider: LLMProvider, @unchecked Sendable {
+    public let supportsNativeTokenStreaming = true
+
+    public init(settings: LLMSettings) {
+        _ = settings
+    }
+
+    public func cancel() {}
+
+    public func streamStep(
+        messages: [LLMChatMessage],
+        tools: [LLMToolDefinition]
+    ) -> AsyncThrowingStream<LLMStreamEvent, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.finish(throwing: LLMError.missingConfiguration)
+        }
+    }
+}
+
+#endif
