@@ -96,6 +96,7 @@ private struct ChatConversationView: View {
     @State private var selectedPhoto: PhotosPickerItem? = nil
     @State private var isPhotoPickerPresented: Bool = false
     @State private var isLoadingPhoto: Bool = false
+    @FocusState private var isComposerFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -114,6 +115,13 @@ private struct ChatConversationView: View {
                     }
                     .padding(.vertical, 12)
                 }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isComposerFocused = false
+                }
+#if os(iOS)
+                .scrollDismissesKeyboard(.interactively)
+#endif
                 .onChange(of: viewModel.messages.count) { _, _ in
                     scrollToBottom(proxy: proxy)
                 }
@@ -192,6 +200,7 @@ private struct ChatConversationView: View {
                 .padding(.vertical, 8)
                 .background(Color(.secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
+                .focused($isComposerFocused)
                 .onSubmit {
                     sendIfAllowed()
                 }
@@ -215,6 +224,16 @@ private struct ChatConversationView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+#if os(iOS)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isComposerFocused = false
+                }
+            }
+        }
+#endif
     }
 
     private var canSend: Bool {
@@ -224,6 +243,7 @@ private struct ChatConversationView: View {
 
     private func sendIfAllowed() {
         guard canSend else { return }
+        isComposerFocused = false
         Task { await viewModel.send() }
     }
 
