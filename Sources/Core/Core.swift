@@ -11,19 +11,23 @@ public enum ItemTypeNormalizer {
         let cleaned = rawType.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return cleaned }
 
-        let normalisedKnownTypes = Set(
+        let normalizedKnownTypes = Set(
             knownTypes.map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
         )
-        guard !normalisedKnownTypes.isEmpty else { return cleaned }
+        guard !normalizedKnownTypes.isEmpty else { return cleaned }
 
-        if normalisedKnownTypes.contains(cleaned) {
+        if normalizedKnownTypes.contains(cleaned) {
             return cleaned
         }
 
-        let pluralToSingular = Dictionary(
-            uniqueKeysWithValues: normalisedKnownTypes.map { (pluralForm(of: $0), $0) }
-        )
-        if let singular = pluralToSingular[cleaned] {
+        var pluralToSingular: [String: String] = [:]
+        for knownType in normalizedKnownTypes {
+            let plural = pluralForm(of: knownType)
+            if pluralToSingular[plural] == nil {
+                pluralToSingular[plural] = knownType
+            }
+        }
+        if let singular = pluralToSingular[cleaned], normalizedKnownTypes.contains(singular) {
             return singular
         }
 

@@ -9,7 +9,7 @@ final class ChatPromptBuilderTests: XCTestCase {
 
     func testSystemPromptSteersToSingularExistingTypes() {
         let prompt = ChatPromptBuilder.systemPrompt(vaultName: "ListAppVault", noteCount: 10)
-        XCTAssertTrue(prompt.contains("book\", not \"books"))
+        XCTAssertTrue(prompt.contains("\"book\", not \"books\""))
     }
 
     func testSystemPromptRequiresConfirmationBeforeNewType() {
