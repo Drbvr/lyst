@@ -59,7 +59,9 @@ public struct WebFetchArgs: Sendable {
 
 // MARK: - Tool definitions
 
-/// The 5 Phase-A tools exposed to OpenAI-compatible endpoints.
+/// Tools exposed to OpenAI-compatible endpoints. The last two (`create_note`
+/// and `web_fetch`) are gated — see `GatedChatTools` — and require explicit
+/// user approval before the runner executes them.
 public enum ChatTools {
 
     public static let all: [LLMToolDefinition] = [

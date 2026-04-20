@@ -39,7 +39,7 @@ enum AttachmentProcessor {
 
         var imageIndex = 0
         for attachment in attachments {
-            switch attachment {
+            switch attachment.kind {
             case .text(let body):
                 modelParts.append("--- Text ---\n\(body)")
             case .url(let url):

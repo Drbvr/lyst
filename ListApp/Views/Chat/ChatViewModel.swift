@@ -1,14 +1,33 @@
 import SwiftUI
 import Core
 
-/// A piece of content attached to the user's next chat message.
-enum ChatAttachment: Identifiable, Equatable {
-    case text(String)
-    case url(URL)
-    case image(URL)
+/// A piece of content attached to the user's next chat message. Identity is a
+/// UUID assigned at creation — the payload is not embedded so that large text
+/// attachments don't balloon SwiftUI diffing cost. Deduplication of equivalent
+/// payloads is handled explicitly via `payloadKey` below.
+struct ChatAttachment: Identifiable, Equatable {
+    enum Kind: Equatable {
+        case text(String)
+        case url(URL)
+        case image(URL)
+    }
 
-    var id: String {
-        switch self {
+    let id: UUID
+    let kind: Kind
+
+    init(_ kind: Kind, id: UUID = UUID()) {
+        self.kind = kind
+        self.id = id
+    }
+
+    static func text(_ s: String) -> ChatAttachment { .init(.text(s)) }
+    static func url(_ u: URL) -> ChatAttachment { .init(.url(u)) }
+    static func image(_ u: URL) -> ChatAttachment { .init(.image(u)) }
+
+    /// Stable key used to detect duplicate payloads (same content should not be
+    /// attached twice in a row). Kept separate from `id` so identity is cheap.
+    var payloadKey: String {
+        switch kind {
         case .text(let s):  return "t:" + s
         case .url(let u):   return "u:" + u.absoluteString
         case .image(let u): return "i:" + u.path
@@ -16,7 +35,7 @@ enum ChatAttachment: Identifiable, Equatable {
     }
 
     var displayLabel: String {
-        switch self {
+        switch kind {
         case .text(let s):
             let preview = s.trimmingCharacters(in: .whitespacesAndNewlines)
             return String(preview.prefix(40)) + (preview.count > 40 ? "…" : "")
@@ -26,7 +45,7 @@ enum ChatAttachment: Identifiable, Equatable {
     }
 
     var systemImage: String {
-        switch self {
+        switch kind {
         case .text:  return "text.alignleft"
         case .url:   return "link"
         case .image: return "photo"
@@ -56,7 +75,7 @@ final class ChatViewModel {
     // MARK: - Attachments
 
     func addAttachment(_ attachment: ChatAttachment) {
-        if !attachments.contains(where: { $0.id == attachment.id }) {
+        if !attachments.contains(where: { $0.payloadKey == attachment.payloadKey }) {
             attachments.append(attachment)
         }
     }
@@ -140,6 +159,7 @@ final class ChatViewModel {
                     if let tci = self.messages[idx].toolCalls.firstIndex(where: { $0.id == id }) {
                         self.messages[idx].toolCalls[tci].approvalState = .pending
                         self.messages[idx].toolCalls[tci].approvalSummary = summary
+                        self.messages[idx].toolCalls[tci].isRunning = false
                     } else {
                         var record = ToolCallRecord(
                             id: id, name: name, argumentsJSON: "",
@@ -154,12 +174,10 @@ final class ChatViewModel {
                     if let tci = self.messages[idx].toolCalls.firstIndex(where: { $0.id == id }) {
                         self.messages[idx].toolCalls[tci].resultJSON = result
                         self.messages[idx].toolCalls[tci].isRunning = false
-                        // If it was pending and we got a result, it was approved
-                        // and ran — or the denial produced the synthetic result.
                         let state = self.messages[idx].toolCalls[tci].approvalState
-                        if state == .pending {
+                        if state == .pending || state == .approved {
                             self.messages[idx].toolCalls[tci].approvalState =
-                                result.contains("user_declined") ? .denied : .approved
+                                Self.isUserDeclined(result) ? .denied : .approved
                         }
                     }
 
@@ -209,5 +227,18 @@ final class ChatViewModel {
 
     func clearHistory() {
         messages = []
+    }
+
+    /// Returns true iff the tool result JSON has `error == "user_declined"`.
+    /// Checking the decoded field (rather than substring-matching the raw
+    /// string) avoids false positives when a legitimately fetched page or
+    /// note body happens to contain the literal text "user_declined".
+    private static func isUserDeclined(_ resultJSON: String) -> Bool {
+        guard
+            let data = resultJSON.data(using: .utf8),
+            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let err = obj["error"] as? String
+        else { return false }
+        return err == "user_declined"
     }
 }

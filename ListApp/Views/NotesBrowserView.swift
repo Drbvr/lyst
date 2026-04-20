@@ -63,25 +63,34 @@ struct NotesBrowserView: View {
     private var availableTagGroups: [(tag: String, count: Int, children: [(tag: String, count: Int)])] {
         let items = typeStatusFilteredItems
         var groups: [String: Set<String>] = [:]
+        var tagCounts: [String: Int] = [:]
+        var topLevelCounts: [String: Int] = [:]
+
         for item in items {
-            for tag in item.tags {
-                guard !tag.isEmpty else { continue }
+            let uniqueTags = Set(item.tags.filter { !$0.isEmpty })
+            var itemTopLevels: Set<String> = []
+
+            for tag in uniqueTags {
                 let topLevel = String(tag.split(separator: "/").first ?? Substring(tag))
                 groups[topLevel, default: Set()].insert(tag)
+                tagCounts[tag, default: 0] += 1
+                itemTopLevels.insert(topLevel)
+            }
+
+            for topLevel in itemTopLevels {
+                topLevelCounts[topLevel, default: 0] += 1
             }
         }
+
         return groups.keys.sorted().map { topLevel in
             let allTagsForGroup = groups[topLevel] ?? Set()
             let children = allTagsForGroup
                 .filter { $0.contains("/") }
                 .sorted()
                 .map { childTag in
-                    let count = items.filter { $0.tags.contains(childTag) }.count
-                    return (tag: childTag, count: count)
+                    (tag: childTag, count: tagCounts[childTag, default: 0])
                 }
-            let totalCount = items.filter { item in
-                item.tags.contains { $0 == topLevel || $0.hasPrefix(topLevel + "/") }
-            }.count
+            let totalCount = topLevelCounts[topLevel, default: 0]
             return (tag: topLevel, count: totalCount, children: children)
         }
     }
@@ -363,7 +372,11 @@ struct NotesBrowserView: View {
             selectedTags.remove(tag)
             childTags.forEach { selectedTags.remove($0) }
         } else {
+            // Core tag filtering is exact-match, so selecting a group needs to
+            // insert every descendant tag as well — otherwise toggling "work"
+            // wouldn't match items only tagged "work/project".
             selectedTags.insert(tag)
+            childTags.forEach { selectedTags.insert($0) }
         }
     }
 

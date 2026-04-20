@@ -62,21 +62,36 @@ public actor ChatAgent {
         currentTask?.cancel()
         provider.cancel()
         // Resolve any outstanding approvals as denials so the loop can unwind.
-        for (_, cont) in pendingApprovals {
-            cont.resume(returning: false)
+        let pendingIds = Array(pendingApprovals.keys)
+        for id in pendingIds {
+            resolvePendingApproval(id: id, allow: false)
         }
-        pendingApprovals.removeAll()
     }
 
     /// Called by the UI when the user approves or denies a gated tool call.
     public func respondToApproval(id: String, allow: Bool) {
+        resolvePendingApproval(id: id, allow: allow)
+    }
+
+    private func resolvePendingApproval(id: String, allow: Bool) {
         guard let cont = pendingApprovals.removeValue(forKey: id) else { return }
         cont.resume(returning: allow)
     }
 
     private func waitForApproval(callId: String) async -> Bool {
-        await withCheckedContinuation { continuation in
-            pendingApprovals[callId] = continuation
+        if Task.isCancelled {
+            return false
+        }
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                if Task.isCancelled {
+                    continuation.resume(returning: false)
+                } else {
+                    pendingApprovals[callId] = continuation
+                }
+            }
+        } onCancel: {
+            Task { await self.resolvePendingApproval(id: callId, allow: false) }
         }
     }
 
