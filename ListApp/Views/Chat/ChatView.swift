@@ -94,6 +94,7 @@ private struct ChatConversationView: View {
     @Environment(AppState.self) private var appState
 
     @State private var selectedPhoto: PhotosPickerItem? = nil
+    @State private var isPhotoPickerPresented: Bool = false
     @State private var isLoadingPhoto: Bool = false
 
     var body: some View {
@@ -229,7 +230,9 @@ private struct ChatConversationView: View {
     @ViewBuilder
     private var attachmentMenu: some View {
         Menu {
-            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+            Button {
+                isPhotoPickerPresented = true
+            } label: {
                 Label("Add Photo", systemImage: "photo")
             }
             #if os(iOS)
@@ -257,6 +260,7 @@ private struct ChatConversationView: View {
             }
         }
         .disabled(viewModel.isGenerating)
+        .photosPicker(isPresented: $isPhotoPickerPresented, selection: $selectedPhoto, matching: .images)
     }
 
     // MARK: - Attachment helpers
