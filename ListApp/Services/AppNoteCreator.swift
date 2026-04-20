@@ -1,9 +1,11 @@
 import Foundation
 import Core
 
-/// App-layer bridge that lets `ChatToolRunner` create notes via `AppState`
-/// without Core having to know about SwiftUI/AppState.
-final class AppNoteCreator: NoteCreating, @unchecked Sendable {
+/// App-layer bridge that lets `ChatToolRunner` (a Core actor) create notes via
+/// `AppState`. Main-actor-isolated so every mutation of `AppState.items` /
+/// `.errorMessage` happens on the main actor — no `@unchecked Sendable`.
+@MainActor
+struct AppNoteCreator: NoteCreating {
     let appState: AppState
 
     init(appState: AppState) {
@@ -24,25 +26,17 @@ final class AppNoteCreator: NoteCreating, @unchecked Sendable {
 
         let properties = Self.convertProperties(stringProperties)
 
-        let vaultURL = await MainActor.run { appState.currentVaultURL }
-        guard let vaultURL else { throw NoteCreateError.noVault }
-
         if normalisedType == "todo" {
-            await appState.createTodo(title: trimmedTitle, tags: tags, properties: properties)
-            return vaultURL.appendingPathComponent("Inbox.md").path
+            return try await appState.createTodo(
+                title: trimmedTitle, tags: tags, properties: properties
+            )
         } else {
-            await appState.createYAMLItem(
+            return try await appState.createYAMLItem(
                 type: normalisedType,
                 title: trimmedTitle,
                 tags: tags,
                 properties: properties
             )
-            let folder = normalisedType.capitalized + "s"
-            let safe = AppStateLogic.sanitizedFilename(from: trimmedTitle) ?? trimmedTitle
-            return vaultURL
-                .appendingPathComponent(folder)
-                .appendingPathComponent("\(safe).md")
-                .path
         }
     }
 
@@ -76,13 +70,11 @@ final class AppNoteCreator: NoteCreating, @unchecked Sendable {
 }
 
 enum NoteCreateError: LocalizedError {
-    case noVault
     case missingTitle
     case invalidType
 
     var errorDescription: String? {
         switch self {
-        case .noVault:      return "No vault folder is selected. Pick one in Settings."
         case .missingTitle: return "A title is required."
         case .invalidType:  return "A type is required (e.g. 'todo', 'book', 'note')."
         }

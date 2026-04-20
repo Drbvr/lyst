@@ -101,6 +101,51 @@ private struct FMListRecentNotesTool: Tool {
     }
 }
 
+// Note: on the FoundationModels path tool calls happen inside
+// `sess.respond(to:)`, so the `ChatAgent` approval gate that runs on the
+// OpenAI path does not intercept them. Gated execution for on-device mode is
+// tracked as follow-up work; today these tools run immediately if the model
+// calls them.
+
+@available(iOS 26.0, *)
+private struct FMCreateNoteTool: Tool {
+    let name = "create_note"
+    let description = "Create a new note (todo, book, movie, restaurant, etc.) in the vault."
+
+    @Generable struct Arguments {
+        @Guide(description: "Item type: 'todo', 'book', 'movie', 'restaurant', 'note', etc.")
+        var type: String
+        @Guide(description: "Required title of the note")
+        var title: String
+        @Guide(description: "Optional tag, e.g. 'work' or 'work/project-alpha'")
+        var tag: String?
+    }
+
+    let runner: ChatToolRunner
+    func call(arguments: Arguments) async throws -> String {
+        let tags = arguments.tag.map { [$0] } ?? []
+        let args = CreateNoteArgs(type: arguments.type, title: arguments.title, tags: tags)
+        return await runner.runRaw(name: name, args: args)
+    }
+}
+
+@available(iOS 26.0, *)
+private struct FMWebFetchTool: Tool {
+    let name = "web_fetch"
+    let description = "Fetch the readable text of a public http or https URL."
+
+    @Generable struct Arguments {
+        @Guide(description: "Public http or https URL to fetch")
+        var url: String
+    }
+
+    let runner: ChatToolRunner
+    func call(arguments: Arguments) async throws -> String {
+        let args = WebFetchArgs(url: arguments.url)
+        return await runner.runRaw(name: name, args: args)
+    }
+}
+
 // MARK: - Provider
 
 /// LLMProvider backed by Apple Intelligence (FoundationModels).
@@ -163,7 +208,9 @@ public final class AppleIntelligenceProvider: LLMProvider, @unchecked Sendable {
             FMListNotesTool(runner: toolRunner),
             FMReadNoteTool(runner: toolRunner),
             FMOutlineNoteTool(runner: toolRunner),
-            FMListRecentNotesTool(runner: toolRunner)
+            FMListRecentNotesTool(runner: toolRunner),
+            FMCreateNoteTool(runner: toolRunner),
+            FMWebFetchTool(runner: toolRunner)
         ]
         let sess = LanguageModelSession(tools: fmTools, instructions: systemPrompt)
 

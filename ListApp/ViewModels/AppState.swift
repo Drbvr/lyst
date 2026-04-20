@@ -15,6 +15,22 @@ struct PendingImport: Identifiable {
     init(webURL: URL)    { webURLs   = [webURL] }
 }
 
+// MARK: - Errors
+
+enum AppStateCreateError: LocalizedError {
+    case noVault
+    case invalidFilename
+    case writeFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .noVault:         return "No vault folder is selected. Pick one in Settings."
+        case .invalidFilename: return "Could not derive a valid filename from the title."
+        case .writeFailed(let detail): return "Failed to write \(detail)"
+        }
+    }
+}
+
 // MARK: - AppState
 
 @Observable
@@ -304,9 +320,11 @@ class AppState {
 
     // MARK: - Item Creation
 
-    /// Create a new todo item — appends a checkbox line to Inbox.md in the vault root.
-    func createTodo(title: String, tags: [String], properties: [String: PropertyValue]) async {
-        guard let vaultURL = currentVaultURL else { return }
+    /// Create a new todo item — appends a checkbox line to Inbox.md in the vault
+    /// root. Returns the absolute file path of Inbox.md on success; throws on
+    /// write failure. Also appends the new item to `items`.
+    func createTodo(title: String, tags: [String], properties: [String: PropertyValue]) async throws -> String {
+        guard let vaultURL = currentVaultURL else { throw AppStateCreateError.noVault }
 
         let inboxPath = vaultURL.appendingPathComponent("Inbox.md").path
         let line = AppStateLogic.buildTodoLine(title: title, tags: tags, properties: properties)
@@ -324,7 +342,7 @@ class AppState {
             break
         case .failure(let e):
             errorMessage = "Failed to write Inbox.md: \(e)"
-            return
+            throw AppStateCreateError.writeFailed("Inbox.md: \(e)")
         }
 
         var newItem = Item(
@@ -339,15 +357,18 @@ class AppState {
         newItem.createdAt = (attrs?[.creationDate] as? Date) ?? Date()
         newItem.updatedAt = Date()
         items.append(newItem)
+        return inboxPath
     }
 
     /// Create a new YAML-frontmatter item (book, movie, restaurant, etc.).
-    /// Writes a new .md file to {VaultRoot}/{TypeName}s/{sanitizedTitle}.md
-    func createYAMLItem(type: String, title: String, tags: [String], properties: [String: PropertyValue]) async {
-        guard let vaultURL = currentVaultURL else { return }
+    /// Writes a new .md file to {VaultRoot}/{TypeName}s/{sanitizedTitle}.md.
+    /// Returns the absolute file path on success; throws on invalid title or
+    /// write failure.
+    func createYAMLItem(type: String, title: String, tags: [String], properties: [String: PropertyValue]) async throws -> String {
+        guard let vaultURL = currentVaultURL else { throw AppStateCreateError.noVault }
         guard let safeName = AppStateLogic.sanitizedFilename(from: title) else {
             errorMessage = "Invalid title for filename."
-            return
+            throw AppStateCreateError.invalidFilename
         }
 
         let typeFolderName = type.capitalized + "s"
@@ -364,7 +385,7 @@ class AppState {
             break
         case .failure(let e):
             errorMessage = "Failed to write \(safeName).md: \(e)"
-            return
+            throw AppStateCreateError.writeFailed("\(safeName).md: \(e)")
         }
 
         var newItem = Item(
@@ -377,6 +398,7 @@ class AppState {
         )
         newItem.updatedAt = Date()
         items.append(newItem)
+        return filePath
     }
 
     // MARK: - Filtering
