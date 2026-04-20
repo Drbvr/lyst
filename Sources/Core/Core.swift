@@ -23,11 +23,9 @@ public enum ItemTypeNormalizer {
         var pluralToSingular: [String: String] = [:]
         for knownType in normalizedKnownTypes {
             let plural = pluralForm(of: knownType)
-            if pluralToSingular[plural] == nil {
-                pluralToSingular[plural] = knownType
-            }
+            pluralToSingular[plural, default: knownType] = knownType
         }
-        if let singular = pluralToSingular[cleaned], normalizedKnownTypes.contains(singular) {
+        if let singular = pluralToSingular[cleaned] {
             return singular
         }
 
