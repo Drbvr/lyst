@@ -7,6 +7,15 @@ public enum ChatRole: String, Codable, Sendable {
     case tool
 }
 
+/// Approval state for a tool call that requires the user's explicit consent
+/// before it runs (e.g. creating a note, fetching an external URL).
+public enum ToolApprovalState: String, Sendable, Codable {
+    case notRequired
+    case pending
+    case approved
+    case denied
+}
+
 /// Record of a single tool call within an assistant message.
 public struct ToolCallRecord: Sendable, Codable, Identifiable {
     public let id: String
@@ -15,12 +24,31 @@ public struct ToolCallRecord: Sendable, Codable, Identifiable {
     public var resultJSON: String?
     public var errorMessage: String?
     public var isRunning: Bool
+    public var approvalState: ToolApprovalState
+    public var approvalSummary: String?
 
-    public init(id: String, name: String, argumentsJSON: String) {
+    public init(
+        id: String,
+        name: String,
+        argumentsJSON: String,
+        approvalState: ToolApprovalState = .notRequired,
+        approvalSummary: String? = nil
+    ) {
         self.id = id
         self.name = name
         self.argumentsJSON = argumentsJSON
         self.isRunning = true
+        self.approvalState = approvalState
+        self.approvalSummary = approvalSummary
+    }
+}
+
+/// Names of tools that require user approval before execution.
+public enum GatedChatTools {
+    public static let names: Set<String> = ["create_note", "web_fetch"]
+
+    public static func requiresApproval(_ name: String) -> Bool {
+        names.contains(name)
     }
 }
 

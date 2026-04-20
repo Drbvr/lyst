@@ -3,6 +3,8 @@ import Core
 
 struct ChatMessageRow: View {
     let message: ChatMessage
+    var onRespondToApproval: ((_ id: String, _ allow: Bool) -> Void)? = nil
+
     @Environment(AppState.self) private var appState
     @State private var expandedToolCall: String? = nil
 
@@ -35,7 +37,7 @@ struct ChatMessageRow: View {
         } else if message.role == .assistant {
             if message.content.isEmpty && message.toolCalls.isEmpty {
                 HStack(spacing: 4) {
-                    ForEach(0..<3, id: \.self) { i in
+                    ForEach(0..<3, id: \.self) { _ in
                         Circle()
                             .frame(width: 6, height: 6)
                             .opacity(0.4)
@@ -45,8 +47,8 @@ struct ChatMessageRow: View {
                 .padding(.vertical, 14)
                 .background(Color(.secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 18))
-            } else {
-                Text(message.content)
+            } else if !message.content.isEmpty {
+                Text(markdownAttributed(message.content))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(Color(.secondarySystemBackground))
@@ -56,14 +58,30 @@ struct ChatMessageRow: View {
         }
     }
 
+    /// Parses `content` as inline markdown. Falls back to a plain string on error
+    /// so partially-streamed deltas never fail to render.
+    private func markdownAttributed(_ text: String) -> AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace
+        )
+        return (try? AttributedString(markdown: text, options: options))
+            ?? AttributedString(text)
+    }
+
     // MARK: - Tool call cards
 
     @ViewBuilder
     private var toolCallsView: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             ForEach(message.toolCalls) { call in
-                ToolCallCard(call: call, isExpanded: expandedToolCall == call.id) {
-                    expandedToolCall = expandedToolCall == call.id ? nil : call.id
+                if call.approvalState == .pending {
+                    ApprovalCard(call: call) { allow in
+                        onRespondToApproval?(call.id, allow)
+                    }
+                } else {
+                    ToolCallCard(call: call, isExpanded: expandedToolCall == call.id) {
+                        expandedToolCall = expandedToolCall == call.id ? nil : call.id
+                    }
                 }
             }
         }
@@ -84,6 +102,72 @@ struct ChatMessageRow: View {
     }
 }
 
+// MARK: - Approval card
+
+private struct ApprovalCard: View {
+    let call: ToolCallRecord
+    let onRespond: (Bool) -> Void
+
+    private var title: String {
+        switch call.name {
+        case "create_note": return "Create note?"
+        case "web_fetch":   return "Fetch URL?"
+        default:            return "Run \(call.name)?"
+        }
+    }
+
+    private var icon: String {
+        switch call.name {
+        case "create_note": return "doc.badge.plus"
+        case "web_fetch":   return "link"
+        default:            return "questionmark.circle"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .foregroundStyle(Color.accentColor)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            if let summary = call.approvalSummary, !summary.isEmpty {
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+            HStack(spacing: 8) {
+                Button(role: .destructive) {
+                    onRespond(false)
+                } label: {
+                    Text("Deny")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Button {
+                    onRespond(true)
+                } label: {
+                    Text("Allow")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .padding(10)
+        .background(Color(.tertiarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.accentColor.opacity(0.25), lineWidth: 1)
+        )
+    }
+}
+
 // MARK: - Tool call card
 
 private struct ToolCallCard: View {
@@ -91,11 +175,25 @@ private struct ToolCallCard: View {
     let isExpanded: Bool
     let onTap: () -> Void
 
+    private var statusIcon: String {
+        if call.isRunning { return "gear" }
+        if call.approvalState == .denied { return "hand.raised" }
+        if call.errorMessage != nil { return "xmark.circle" }
+        return "checkmark.circle"
+    }
+
+    private var statusColor: Color {
+        if call.isRunning { return .orange }
+        if call.approvalState == .denied { return .secondary }
+        if call.errorMessage != nil { return .red }
+        return .green
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 6) {
-                Image(systemName: call.isRunning ? "gear" : (call.errorMessage != nil ? "xmark.circle" : "checkmark.circle"))
-                    .foregroundStyle(call.isRunning ? Color.orange : (call.errorMessage != nil ? .red : .green))
+                Image(systemName: statusIcon)
+                    .foregroundStyle(statusColor)
                     .symbolEffect(.rotate, isActive: call.isRunning)
                 Text(call.name)
                     .font(.caption.monospaced())

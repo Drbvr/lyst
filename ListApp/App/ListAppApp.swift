@@ -18,6 +18,9 @@ struct ListAppApp: App {
                 .environment(appState)
                 .preferredColorScheme(preferredColorScheme)
                 .onOpenURL { url in
+                    // External share / URL scheme: queue as a chat attachment.
+                    // ChatView picks up `appState.pendingImport` and converts it
+                    // into `ChatAttachment`s on the composer.
                     if url.scheme == "lijster" {
                         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                               let webURLString = components.queryItems?.first(where: { $0.name == "url" })?.value,
@@ -28,10 +31,6 @@ struct ListAppApp: App {
                     } else if url.scheme == "https" || url.scheme == "http" {
                         appState.pendingImport = PendingImport(webURL: url)
                     }
-                }
-                .sheet(item: Bindable(appState).pendingImport) { pending in
-                    ImportView(pending: pending)
-                        .environment(appState)
                 }
         }
     }
