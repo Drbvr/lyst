@@ -12,9 +12,11 @@ public enum ItemTypeNormalizer {
         let cleaned = rawType.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return cleaned }
 
-        let normalizedKnownTypes = knownTypes
-            .map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let normalizedKnownTypes = Set(
+            knownTypes
+                .map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
         guard !normalizedKnownTypes.isEmpty else { return cleaned }
 
         var aliasesToKnownType: [String: String] = [:]

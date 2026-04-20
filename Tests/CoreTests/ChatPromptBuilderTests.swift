@@ -19,6 +19,7 @@ final class ChatPromptBuilderTests: XCTestCase {
 
     func testSystemPromptAvoidsSymbolFormattedTypeNames() {
         let prompt = ChatPromptBuilder.systemPrompt(vaultName: "ListAppVault", noteCount: 10)
-        XCTAssertTrue(prompt.contains("\"to-do\", \"book!\""))
+        XCTAssertTrue(prompt.contains("\"to-do\""))
+        XCTAssertTrue(prompt.contains("\"book!\""))
     }
 }
