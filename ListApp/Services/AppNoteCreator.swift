@@ -21,7 +21,10 @@ struct AppNoteCreator: NoteCreating {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { throw NoteCreateError.missingTitle }
 
-        let normalisedType = type.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalisedType = ItemTypeNormalizer.canonicalType(
+            from: type,
+            knownTypes: appState.listTypes.map(\.name)
+        )
         guard !normalisedType.isEmpty else { throw NoteCreateError.invalidType }
 
         let properties = Self.convertProperties(stringProperties)

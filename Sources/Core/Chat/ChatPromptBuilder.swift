@@ -21,8 +21,10 @@ public enum ChatPromptBuilder {
           read is worthwhile.
         - Use `outline_note` on long notes before reading them in full.
         - Use `create_note` to save a new item (todo, book, movie, restaurant, note, etc.) — \
-          common types: "todo", "book", "movie", "restaurant", "note". The user must approve \
-          every call; propose clear titles and only the tags/properties the user asked for.
+          common types: "todo", "book", "movie", "restaurant", "note". Prefer these existing \
+          singular type names (e.g. "book", not "books"). Only introduce a new type when the user \
+          explicitly asks for one or confirms it. The user must approve every call; propose clear \
+          titles and only the tags/properties the user asked for.
         - Use `web_fetch` to read the text of a public URL the user mentioned. The user must \
           approve every call.
 
