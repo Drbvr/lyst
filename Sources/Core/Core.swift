@@ -33,7 +33,11 @@ public enum ItemTypeNormalizer {
         guard !singular.isEmpty else { return singular }
 
         if singular.hasSuffix("y"), singular.count > 1 {
-            return String(singular.dropLast()) + "ies"
+            let beforeY = singular.dropLast().last
+            let vowels = Set(["a", "e", "i", "o", "u"])
+            if let beforeY, !vowels.contains(String(beforeY).lowercased()) {
+                return String(singular.dropLast()) + "ies"
+            }
         }
 
         if singular.hasSuffix("s")

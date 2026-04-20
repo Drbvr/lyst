@@ -38,4 +38,12 @@ final class ItemTypeNormalizerTests: XCTestCase {
         )
         XCTAssertEqual(type, "movie")
     }
+
+    func testCanonicalTypeUsesSimpleSPluralForVowelBeforeY() {
+        let type = ItemTypeNormalizer.canonicalType(
+            from: "days",
+            knownTypes: ["day", "book"]
+        )
+        XCTAssertEqual(type, "day")
+    }
 }
