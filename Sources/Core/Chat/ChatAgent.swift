@@ -5,6 +5,9 @@ import Foundation
 public enum ChatEvent: Sendable {
     case assistantDelta(String)
     case toolCallStart(id: String, name: String)
+    /// Emitted before a gated tool (e.g. create_note, web_fetch) runs. The UI
+    /// should show an approval card and call back via `ChatAgent.respondToApproval`.
+    case toolCallNeedsApproval(id: String, name: String, summary: String)
     case toolCallComplete(id: String, result: String)
     case done(citations: [NoteRef])
     case budgetExceeded(iterationCount: Int)
@@ -23,6 +26,7 @@ public actor ChatAgent {
     private let maxIterations: Int
 
     private var currentTask: Task<Void, Never>?
+    private var pendingApprovals: [String: CheckedContinuation<Bool, Never>] = [:]
 
     public init(
         provider: any LLMProvider,
@@ -57,6 +61,23 @@ public actor ChatAgent {
     public func cancel() {
         currentTask?.cancel()
         provider.cancel()
+        // Resolve any outstanding approvals as denials so the loop can unwind.
+        for (_, cont) in pendingApprovals {
+            cont.resume(returning: false)
+        }
+        pendingApprovals.removeAll()
+    }
+
+    /// Called by the UI when the user approves or denies a gated tool call.
+    public func respondToApproval(id: String, allow: Bool) {
+        guard let cont = pendingApprovals.removeValue(forKey: id) else { return }
+        cont.resume(returning: allow)
+    }
+
+    private func waitForApproval(callId: String) async -> Bool {
+        await withCheckedContinuation { continuation in
+            pendingApprovals[callId] = continuation
+        }
     }
 
     // MARK: - Loop
@@ -141,13 +162,30 @@ public actor ChatAgent {
                 return
             }
 
-            // Execute tool calls concurrently
+            // Gate calls that require explicit user approval. Approval is
+            // serial (one prompt at a time) but non-gated calls can run
+            // concurrently.
+            for call in pendingCalls where GatedChatTools.requiresApproval(call.name) {
+                let summary = Self.approvalSummary(name: call.name, argumentsJSON: call.argumentsJSON)
+                await onEvent(.toolCallNeedsApproval(id: call.id, name: call.name, summary: summary))
+            }
+
+            // Execute tool calls concurrently (after the UI is informed about
+            // any that need approval). Gated tools await the user's response
+            // inside their branch before running.
             var toolResults: [(callId: String, result: String)] = []
             var stepRefs: [NoteRef] = []
 
             await withTaskGroup(of: (callId: String, result: String, refs: [NoteRef]).self) { group in
                 for call in pendingCalls {
                     group.addTask {
+                        if GatedChatTools.requiresApproval(call.name) {
+                            let allow = await self.waitForApproval(callId: call.id)
+                            if !allow {
+                                let denied = Self.encodeErrorJSON("user_declined")
+                                return (call.id, denied, [])
+                            }
+                        }
                         let (result, refs) = await self.toolRunner.run(
                             name: call.name,
                             argumentsJSON: call.argumentsJSON
@@ -211,5 +249,26 @@ public actor ChatAgent {
             return "{\"error\":\"unknown\"}"
         }
         return str
+    }
+
+    /// Builds a one-line description of a pending tool call for the approval card.
+    public static func approvalSummary(name: String, argumentsJSON: String) -> String {
+        let data = argumentsJSON.data(using: .utf8) ?? Data()
+        let dict = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+
+        switch name {
+        case "create_note":
+            let type = (dict["type"] as? String) ?? "note"
+            let title = (dict["title"] as? String) ?? "(untitled)"
+            return "Create \(type) · \(title)"
+        case "web_fetch":
+            let raw = (dict["url"] as? String) ?? ""
+            if let host = URL(string: raw)?.host {
+                return "Fetch \(host)"
+            }
+            return "Fetch \(raw)"
+        default:
+            return name
+        }
     }
 }

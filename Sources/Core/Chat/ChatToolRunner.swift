@@ -2,6 +2,14 @@ import Foundation
 
 private let maxResultBytes = 8_000
 
+/// App-layer bridge for tools that mutate user data. Injected so the runner
+/// stays free of UI/ViewModel dependencies.
+public protocol NoteCreating: Sendable {
+    /// Create a note of the given `type` in the vault. Returns the resulting
+    /// note's file path on success, or throws with a human-readable reason.
+    func createNote(type: String, title: String, tags: [String], stringProperties: [String: String]) async throws -> String
+}
+
 /// Executes chat tool calls against the NoteIndex and file system.
 /// Returns a JSON string result and any NoteRefs cited.
 public actor ChatToolRunner {
@@ -9,11 +17,20 @@ public actor ChatToolRunner {
     private let index: NoteIndex
     private let fileSystem: FileSystemManager
     private let parser: ObsidianTodoParser
+    private let noteCreator: NoteCreating?
+    private let webFetcher: WebContentFetcher
 
-    public init(index: NoteIndex, fileSystem: FileSystemManager) {
+    public init(
+        index: NoteIndex,
+        fileSystem: FileSystemManager,
+        noteCreator: NoteCreating? = nil,
+        webFetcher: WebContentFetcher = WebContentFetcher()
+    ) {
         self.index = index
         self.fileSystem = fileSystem
         self.parser = ObsidianTodoParser()
+        self.noteCreator = noteCreator
+        self.webFetcher = webFetcher
     }
 
     // MARK: - Dispatch
@@ -61,6 +78,23 @@ public actor ChatToolRunner {
                 limit: args["limit"] as? Int
             ))
 
+        case "create_note":
+            guard let type = args["type"] as? String, let title = args["title"] as? String else {
+                return (errorJSON("missing_argument", "create_note requires 'type' and 'title'"), [])
+            }
+            let tags = (args["tags"] as? [String]) ?? []
+            let props = (args["properties"] as? [String: Any]) ?? [:]
+            let stringProps = props.reduce(into: [String: String]()) { acc, pair in
+                acc[pair.key] = String(describing: pair.value)
+            }
+            return await runCreateNote(CreateNoteArgs(type: type, title: title, tags: tags, properties: stringProps))
+
+        case "web_fetch":
+            guard let url = args["url"] as? String else {
+                return (errorJSON("missing_argument", "web_fetch requires 'url'"), [])
+            }
+            return await runWebFetch(WebFetchArgs(url: url))
+
         default:
             return (errorJSON("unknown_tool", "No tool named '\(name)'"), [])
         }
@@ -79,6 +113,10 @@ public actor ChatToolRunner {
             return await runOutlineNote(a).0
         case let a as ListRecentNotesArgs:
             return await runListRecentNotes(a).0
+        case let a as CreateNoteArgs:
+            return await runCreateNote(a).0
+        case let a as WebFetchArgs:
+            return await runWebFetch(a).0
         default:
             return errorJSON("unsupported_args", "Unrecognised argument type")
         }
@@ -195,6 +233,50 @@ public actor ChatToolRunner {
             "headings": headingList
         ]
         return (json(result), [NoteRef(file: file)])
+    }
+
+    private func runCreateNote(_ args: CreateNoteArgs) async -> (String, [NoteRef]) {
+        guard let creator = noteCreator else {
+            return (errorJSON("unsupported", "Note creation is not available in this context."), [])
+        }
+        do {
+            let filePath = try await creator.createNote(
+                type: args.type,
+                title: args.title,
+                tags: args.tags,
+                stringProperties: args.properties
+            )
+            return (
+                json(["created": true, "file": filePath, "title": args.title, "type": args.type]),
+                [NoteRef(file: filePath)]
+            )
+        } catch {
+            return (errorJSON("create_failed", error.localizedDescription), [])
+        }
+    }
+
+    private func runWebFetch(_ args: WebFetchArgs) async -> (String, [NoteRef]) {
+        guard let validated = Self.validatedWebFetchURL(from: args.url) else {
+            return (errorJSON("invalid_url", "Only http/https URLs with a public host are supported."), [])
+        }
+        do {
+            let text = try await webFetcher.fetchText(from: validated.absoluteString)
+            return (truncated(json(["url": validated.absoluteString, "text": text])), [])
+        } catch {
+            return (errorJSON("fetch_failed", error.localizedDescription), [])
+        }
+    }
+
+    /// Restrict `web_fetch` to public http(s) hosts — no localhost, no loopback.
+    public static func validatedWebFetchURL(from candidate: String) -> URL? {
+        guard
+            let components = URLComponents(string: candidate.trimmingCharacters(in: .whitespacesAndNewlines)),
+            let scheme = components.scheme?.lowercased(),
+            ["http", "https"].contains(scheme),
+            let host = components.host?.lowercased(), !host.isEmpty,
+            !["localhost", "127.0.0.1", "::1"].contains(host)
+        else { return nil }
+        return components.url
     }
 
     private func runListRecentNotes(_ args: ListRecentNotesArgs) async -> (String, [NoteRef]) {

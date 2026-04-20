@@ -1,5 +1,9 @@
 import SwiftUI
 import Core
+import PhotosUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct ChatView: View {
     @Environment(AppState.self) private var appState
@@ -25,6 +29,11 @@ struct ChatView: View {
                     .task { await setup() }
             }
         }
+        .onChange(of: appState.pendingImport?.id) { _, _ in
+            guard let vm = viewModel, let pending = appState.pendingImport else { return }
+            addPendingImportToChat(pending, viewModel: vm)
+            appState.pendingImport = nil
+        }
     }
 
     private var providerPill: some View {
@@ -37,11 +46,18 @@ struct ChatView: View {
             .clipShape(Capsule())
     }
 
+    private func addPendingImportToChat(_ pending: PendingImport, viewModel: ChatViewModel) {
+        for text in pending.texts        { viewModel.addAttachment(.text(text)) }
+        for url  in pending.webURLs      { viewModel.addAttachment(.url(url)) }
+        for url  in pending.imageURLs    { viewModel.addAttachment(.image(url)) }
+    }
+
     private func setup() async {
         let settings = appState.llmSettings
         let index = appState.noteIndex
         let coreFS = DefaultFileSystemManager()
-        let runner = ChatToolRunner(index: index, fileSystem: coreFS)
+        let creator = AppNoteCreator(appState: appState)
+        let runner = ChatToolRunner(index: index, fileSystem: coreFS, noteCreator: creator)
 
         let provider: any LLMProvider
         if settings.processingMode == .onDevice {
@@ -62,6 +78,11 @@ struct ChatView: View {
         let vm = await MainActor.run {
             ChatViewModel(agent: agent, appState: appState)
         }
+        // Drain any pending import that arrived before the view model existed.
+        if let pending = appState.pendingImport {
+            addPendingImportToChat(pending, viewModel: vm)
+            appState.pendingImport = nil
+        }
         viewModel = vm
     }
 }
@@ -70,6 +91,10 @@ struct ChatView: View {
 
 private struct ChatConversationView: View {
     @Bindable var viewModel: ChatViewModel
+    @Environment(AppState.self) private var appState
+
+    @State private var selectedPhoto: PhotosPickerItem? = nil
+    @State private var isLoadingPhoto: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -77,8 +102,10 @@ private struct ChatConversationView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(viewModel.messages) { msg in
-                            ChatMessageRow(message: msg)
-                                .id(msg.id)
+                            ChatMessageRow(message: msg) { id, allow in
+                                viewModel.respondToApproval(id: id, allow: allow)
+                            }
+                            .id(msg.id)
                         }
                         if viewModel.budgetExceeded {
                             budgetBanner
@@ -95,7 +122,16 @@ private struct ChatConversationView: View {
             }
 
             Divider()
+            if !viewModel.attachments.isEmpty {
+                attachmentsBar
+            }
             composerBar
+        }
+        .onChange(of: selectedPhoto) { _, newItem in
+            guard let newItem else { return }
+            selectedPhoto = nil
+            isLoadingPhoto = true
+            Task { await loadPhoto(newItem) }
         }
     }
 
@@ -125,8 +161,29 @@ private struct ChatConversationView: View {
         .padding(.horizontal, 12)
     }
 
+    // MARK: - Attachments row
+
+    private var attachmentsBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.attachments) { att in
+                    AttachmentChip(attachment: att) {
+                        viewModel.removeAttachment(att)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
+        .background(Color(.systemBackground))
+    }
+
+    // MARK: - Composer
+
     private var composerBar: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .bottom, spacing: 8) {
+            attachmentMenu
+
             TextField("Ask about your notes…", text: $viewModel.inputText, axis: .vertical)
                 .lineLimit(1...5)
                 .textFieldStyle(.plain)
@@ -135,8 +192,7 @@ private struct ChatConversationView: View {
                 .background(Color(.secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .onSubmit {
-                    guard !viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                    Task { await viewModel.send() }
+                    sendIfAllowed()
                 }
 
             if viewModel.isGenerating {
@@ -147,20 +203,145 @@ private struct ChatConversationView: View {
                 }
             } else {
                 Button {
-                    Task { await viewModel.send() }
+                    sendIfAllowed()
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(
-                            viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? AnyShapeStyle(.tertiary)
-                            : AnyShapeStyle(Color.accentColor)
-                        )
+                        .foregroundStyle(canSend ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.tertiary))
                 }
-                .disabled(viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(!canSend)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    private var canSend: Bool {
+        let hasText = !viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return hasText || !viewModel.attachments.isEmpty
+    }
+
+    private func sendIfAllowed() {
+        guard canSend else { return }
+        Task { await viewModel.send() }
+    }
+
+    @ViewBuilder
+    private var attachmentMenu: some View {
+        Menu {
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                Label("Add Photo", systemImage: "photo")
+            }
+            #if os(iOS)
+            Button {
+                pasteFromClipboard()
+            } label: {
+                Label("Paste", systemImage: "doc.on.clipboard")
+            }
+            #endif
+            Button {
+                addURLFromInput()
+            } label: {
+                Label("Attach URL from text", systemImage: "link")
+            }
+            .disabled(detectedURLInInput == nil)
+        } label: {
+            if isLoadingPhoto {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 32, height: 32)
+            } else {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .disabled(viewModel.isGenerating)
+    }
+
+    // MARK: - Attachment helpers
+
+    private var detectedURLInInput: URL? {
+        let trimmed = viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let components = URLComponents(string: trimmed),
+              let scheme = components.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
+              let host = components.host, !host.isEmpty
+        else { return nil }
+        return components.url
+    }
+
+    private func addURLFromInput() {
+        guard let url = detectedURLInInput else { return }
+        viewModel.addAttachment(.url(url))
+        viewModel.inputText = ""
+    }
+
+    #if os(iOS)
+    private func pasteFromClipboard() {
+        let pb = UIPasteboard.general
+        if pb.hasImages, let image = pb.image {
+            Task {
+                guard let data = image.jpegData(compressionQuality: 0.85) else { return }
+                let tempURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString + ".jpg")
+                guard (try? data.write(to: tempURL)) != nil else { return }
+                await MainActor.run { viewModel.addAttachment(.image(tempURL)) }
+            }
+            return
+        }
+        if pb.hasURLs, let url = pb.url {
+            viewModel.addAttachment(.url(url))
+            return
+        }
+        if pb.hasStrings, let text = pb.string, !text.isEmpty {
+            if let components = URLComponents(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
+               let scheme = components.scheme?.lowercased(),
+               ["http", "https"].contains(scheme),
+               let url = components.url {
+                viewModel.addAttachment(.url(url))
+            } else {
+                viewModel.addAttachment(.text(text))
+            }
+        }
+    }
+    #endif
+
+    private func loadPhoto(_ item: PhotosPickerItem) async {
+        defer { Task { @MainActor in isLoadingPhoto = false } }
+        guard let data = try? await item.loadTransferable(type: Data.self) else { return }
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".jpg")
+        guard (try? data.write(to: tempURL)) != nil else { return }
+        await MainActor.run {
+            viewModel.addAttachment(.image(tempURL))
+        }
+    }
+}
+
+// MARK: - Attachment chip
+
+private struct AttachmentChip: View {
+    let attachment: ChatAttachment
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: attachment.systemImage)
+                .font(.caption)
+            Text(attachment.displayLabel)
+                .font(.caption)
+                .lineLimit(1)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(Capsule())
     }
 }

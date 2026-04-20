@@ -26,54 +26,20 @@ extension View {
 struct ContentView: View {
     @Environment(AppState.self) private var appState
     @State private var selectedTab: Int = 0
-    @State private var showCreate: Bool = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack {
-                SavedViewsListView()
-            }
-            .tabItem {
-                Label("Home", systemImage: "house")
-            }
-            .tag(0)
-
-            NavigationStack {
-                FilterView()
-            }
-            .tabItem {
-                Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-            }
-            .tag(1)
-
-            // Centre "+" tab — intercepted to open a sheet
-            Color.clear
-                .tabItem {
-                    Label("New", systemImage: "plus.circle.fill")
-                }
-                .tag(2)
-
-            NavigationStack {
-                TagBrowserView()
-            }
-            .tabItem {
-                Label("Tags", systemImage: "tag")
-            }
-            .tag(3)
-
-            NavigationStack {
-                SearchView()
-            }
-            .tabItem {
-                Label("Search", systemImage: "magnifyingglass")
-            }
-            .tag(4)
-
             ChatView()
-            .tabItem {
-                Label("Chat", systemImage: "bubble.left.and.bubble.right")
-            }
-            .tag(5)
+                .tabItem {
+                    Label("Chat", systemImage: "bubble.left.and.bubble.right")
+                }
+                .tag(0)
+
+            NotesBrowserView()
+                .tabItem {
+                    Label("Notes", systemImage: "square.stack")
+                }
+                .tag(1)
 
             NavigationStack {
                 SettingsView()
@@ -81,17 +47,7 @@ struct ContentView: View {
             .tabItem {
                 Label("Settings", systemImage: "gear")
             }
-            .tag(6)
-        }
-        .onChange(of: selectedTab) { _, newTab in
-            if newTab == 2 {
-                showCreate = true
-                selectedTab = 0   // jump back to previous tab
-            }
-        }
-        .sheet(isPresented: $showCreate) {
-            CreateItemView()
-                .environment(appState)
+            .tag(2)
         }
     }
 }

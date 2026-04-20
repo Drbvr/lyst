@@ -42,13 +42,29 @@ public struct ListRecentNotesArgs: Sendable {
     }
 }
 
+public struct CreateNoteArgs: Sendable {
+    public let type: String
+    public let title: String
+    public let tags: [String]
+    public let properties: [String: String]
+    public init(type: String, title: String, tags: [String] = [], properties: [String: String] = [:]) {
+        self.type = type; self.title = title; self.tags = tags; self.properties = properties
+    }
+}
+
+public struct WebFetchArgs: Sendable {
+    public let url: String
+    public init(url: String) { self.url = url }
+}
+
 // MARK: - Tool definitions
 
 /// The 5 Phase-A tools exposed to OpenAI-compatible endpoints.
 public enum ChatTools {
 
     public static let all: [LLMToolDefinition] = [
-        listNotes, searchNotes, readNote, outlineNote, listRecentNotes
+        listNotes, searchNotes, readNote, outlineNote, listRecentNotes,
+        createNote, webFetch
     ]
 
     public static let searchNotes = LLMToolDefinition(
@@ -141,6 +157,54 @@ public enum ChatTools {
             "limit": { "type": "integer", "description": "Maximum results (default 20)" }
           },
           "required": []
+        }
+        """
+    )
+
+    public static let createNote = LLMToolDefinition(
+        name: "create_note",
+        description: "Create a new note (todo, book, movie, restaurant, etc.) in the vault. Requires explicit user approval before running.",
+        parametersJSON: """
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Item type: 'todo', 'book', 'movie', 'restaurant', 'note', etc."
+            },
+            "title": {
+              "type": "string",
+              "description": "Required title of the note"
+            },
+            "tags": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Optional tags, e.g. ['work', 'project/alpha']"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "description": "Optional fields specific to the type, e.g. {\\"author\\":\\"…\\",\\"rating\\":\\"4\\"}. Dates use ISO8601."
+            }
+          },
+          "required": ["type", "title"]
+        }
+        """
+    )
+
+    public static let webFetch = LLMToolDefinition(
+        name: "web_fetch",
+        description: "Fetch the readable text of a public http(s) URL. Requires explicit user approval before running.",
+        parametersJSON: """
+        {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "Public http or https URL to fetch"
+            }
+          },
+          "required": ["url"]
         }
         """
     )
