@@ -6,6 +6,7 @@ public struct Core {
 }
 
 public enum ItemTypeNormalizer {
+    private static let vowels = Set(["a", "e", "i", "o", "u"])
 
     public static func canonicalType(from rawType: String, knownTypes: [String]) -> String {
         let cleaned = rawType.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -23,7 +24,9 @@ public enum ItemTypeNormalizer {
         var pluralToSingular: [String: String] = [:]
         for knownType in normalizedKnownTypes {
             let plural = pluralForm(of: knownType)
-            pluralToSingular[plural, default: knownType] = knownType
+            if pluralToSingular[plural] == nil {
+                pluralToSingular[plural] = knownType
+            }
         }
         if let singular = pluralToSingular[cleaned] {
             return singular
@@ -37,7 +40,6 @@ public enum ItemTypeNormalizer {
 
         if singular.hasSuffix("y"), singular.count > 1 {
             let beforeY = singular.dropLast().last
-            let vowels = Set(["a", "e", "i", "o", "u"])
             if let beforeY, !vowels.contains(String(beforeY).lowercased()) {
                 return String(singular.dropLast()) + "ies"
             }
