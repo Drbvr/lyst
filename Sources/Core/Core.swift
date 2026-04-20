@@ -20,10 +20,11 @@ public enum ItemTypeNormalizer {
             return cleaned
         }
 
-        for knownType in normalisedKnownTypes {
-            if cleaned == pluralForm(of: knownType) {
-                return knownType
-            }
+        let pluralToSingular = Dictionary(
+            uniqueKeysWithValues: normalisedKnownTypes.map { (pluralForm(of: $0), $0) }
+        )
+        if let singular = pluralToSingular[cleaned] {
+            return singular
         }
 
         return cleaned
