@@ -16,4 +16,9 @@ final class ChatPromptBuilderTests: XCTestCase {
         let prompt = ChatPromptBuilder.systemPrompt(vaultName: "ListAppVault", noteCount: 10)
         XCTAssertTrue(prompt.contains("explicitly asks for one or confirms it"))
     }
+
+    func testSystemPromptAvoidsSymbolFormattedTypeNames() {
+        let prompt = ChatPromptBuilder.systemPrompt(vaultName: "ListAppVault", noteCount: 10)
+        XCTAssertTrue(prompt.contains("\"to-do\", \"book!\""))
+    }
 }

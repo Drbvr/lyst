@@ -12,24 +12,32 @@ public enum ItemTypeNormalizer {
         let cleaned = rawType.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return cleaned }
 
-        let normalizedKnownTypes = Set(
-            knownTypes.map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
-        )
+        let normalizedKnownTypes = knownTypes
+            .map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
         guard !normalizedKnownTypes.isEmpty else { return cleaned }
 
-        if normalizedKnownTypes.contains(cleaned) {
-            return cleaned
-        }
-
-        var pluralToSingular: [String: String] = [:]
+        var aliasesToKnownType: [String: String] = [:]
         for knownType in normalizedKnownTypes {
-            let plural = pluralForm(of: knownType)
-            if pluralToSingular[plural] == nil {
-                pluralToSingular[plural] = knownType
+            let aliases = [
+                knownType,
+                pluralForm(of: knownType),
+                formattedTypeKey(for: knownType),
+                formattedTypeKey(for: pluralForm(of: knownType))
+            ].filter { !$0.isEmpty }
+
+            for alias in aliases where aliasesToKnownType[alias] == nil {
+                aliasesToKnownType[alias] = knownType
             }
         }
-        if let singular = pluralToSingular[cleaned] {
-            return singular
+
+        if let canonical = aliasesToKnownType[cleaned] {
+            return canonical
+        }
+
+        let cleanedFormattedKey = formattedTypeKey(for: cleaned)
+        if let canonical = aliasesToKnownType[cleanedFormattedKey] {
+            return canonical
         }
 
         return cleaned
@@ -55,5 +63,13 @@ public enum ItemTypeNormalizer {
         }
 
         return singular + "s"
+    }
+
+    private static func formattedTypeKey(for value: String) -> String {
+        value.unicodeScalars
+            .filter { CharacterSet.alphanumerics.contains($0) }
+            .map(String.init)
+            .joined()
+            .lowercased()
     }
 }

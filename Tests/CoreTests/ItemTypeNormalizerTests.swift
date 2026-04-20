@@ -46,4 +46,20 @@ final class ItemTypeNormalizerTests: XCTestCase {
         )
         XCTAssertEqual(type, "day")
     }
+
+    func testCanonicalTypeMapsHyphenatedKnownTypeVariant() {
+        let type = ItemTypeNormalizer.canonicalType(
+            from: "to-do",
+            knownTypes: ["todo", "book"]
+        )
+        XCTAssertEqual(type, "todo")
+    }
+
+    func testCanonicalTypeMapsKnownTypeWithSymbols() {
+        let type = ItemTypeNormalizer.canonicalType(
+            from: "book!!!",
+            knownTypes: ["book", "movie"]
+        )
+        XCTAssertEqual(type, "book")
+    }
 }
