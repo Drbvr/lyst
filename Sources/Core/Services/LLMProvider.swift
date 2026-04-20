@@ -78,6 +78,11 @@ public enum LLMStreamEvent: Sendable {
     /// Incremental JSON fragment for the arguments of an in-progress tool call.
     case toolCallArgsDelta(id: String, json: String)
     case toolCallComplete(id: String)
+    /// Emitted by providers whose tool loop runs out-of-band of the ChatAgent
+    /// (e.g. Apple Intelligence's `sess.respond(to:)`). Carries any note drafts
+    /// produced by `propose_note` calls during the turn so the agent can
+    /// surface them to the UI alongside drafts from the OpenAI path.
+    case draftsProposed([NoteEdit])
     case finish(FinishReason)
 }
 

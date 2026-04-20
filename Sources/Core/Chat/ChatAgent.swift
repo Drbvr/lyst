@@ -5,10 +5,14 @@ import Foundation
 public enum ChatEvent: Sendable {
     case assistantDelta(String)
     case toolCallStart(id: String, name: String)
-    /// Emitted before a gated tool (e.g. create_note, web_fetch) runs. The UI
-    /// should show an approval card and call back via `ChatAgent.respondToApproval`.
+    /// Emitted before a gated tool (e.g. web_fetch) runs. The UI should show
+    /// an approval card and call back via `ChatAgent.respondToApproval`.
     case toolCallNeedsApproval(id: String, name: String, summary: String)
     case toolCallComplete(id: String, result: String)
+    /// Emitted once per assistant turn after all `propose_note` calls in that
+    /// turn have run. Carries every draft produced in the turn so the UI can
+    /// attach a single `DraftBundle` to the current assistant message.
+    case draftsProposed(drafts: [NoteEdit])
     case done(citations: [NoteRef])
     case budgetExceeded(iterationCount: Int)
     case cancelled
@@ -119,6 +123,7 @@ public actor ChatAgent {
             var assistantText = ""
             var pendingCalls: [ToolCallRequest] = []
             var finishReason: FinishReason = .stop
+            var providerDrafts: [NoteEdit] = []
 
             do {
                 for try await event in stream {
@@ -137,6 +142,9 @@ public actor ChatAgent {
 
                     case .toolCallComplete(let id):
                         _ = id  // handled on finish
+
+                    case .draftsProposed(let drafts):
+                        providerDrafts.append(contentsOf: drafts)
 
                     case .finish(let reason):
                         finishReason = reason
@@ -167,6 +175,9 @@ public actor ChatAgent {
                 if !assistantText.isEmpty {
                     transcript.append(.assistant(content: assistantText))
                 }
+                if !providerDrafts.isEmpty {
+                    await onEvent(.draftsProposed(drafts: providerDrafts))
+                }
                 await onEvent(.done(citations: Array(Set(allCitations))))
                 return
             }
@@ -190,32 +201,40 @@ public actor ChatAgent {
             // inside their branch before running.
             var toolResults: [(callId: String, result: String)] = []
             var stepRefs: [NoteRef] = []
+            var stepDrafts: [NoteEdit] = []
 
-            await withTaskGroup(of: (callId: String, result: String, refs: [NoteRef]).self) { group in
+            await withTaskGroup(
+                of: (callId: String, result: String, refs: [NoteRef], drafts: [NoteEdit]).self
+            ) { group in
                 for call in pendingCalls {
                     group.addTask {
                         if GatedChatTools.requiresApproval(call.name) {
                             let allow = await self.waitForApproval(callId: call.id)
                             if !allow {
                                 let denied = Self.encodeErrorJSON("user_declined")
-                                return (call.id, denied, [])
+                                return (call.id, denied, [], [])
                             }
                         }
-                        let (result, refs) = await self.toolRunner.run(
+                        let (result, refs, drafts) = await self.toolRunner.run(
                             name: call.name,
                             argumentsJSON: call.argumentsJSON
                         )
-                        return (call.id, result, refs)
+                        return (call.id, result, refs, drafts)
                     }
                 }
                 for await outcome in group {
                     toolResults.append((outcome.callId, outcome.result))
                     stepRefs.append(contentsOf: outcome.refs)
+                    stepDrafts.append(contentsOf: outcome.drafts)
                     await onEvent(.toolCallComplete(id: outcome.callId, result: outcome.result))
                 }
             }
 
             allCitations.append(contentsOf: stepRefs)
+
+            if !stepDrafts.isEmpty {
+                await onEvent(.draftsProposed(drafts: stepDrafts))
+            }
 
             // Append tool results to transcript
             for (callId, result) in toolResults {
@@ -272,10 +291,6 @@ public actor ChatAgent {
         let dict = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
 
         switch name {
-        case "create_note":
-            let type = (dict["type"] as? String) ?? "note"
-            let title = (dict["title"] as? String) ?? "(untitled)"
-            return "Create \(type) · \(title)"
         case "web_fetch":
             let raw = (dict["url"] as? String) ?? ""
             if let host = URL(string: raw)?.host {

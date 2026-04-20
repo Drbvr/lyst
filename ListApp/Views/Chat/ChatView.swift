@@ -57,7 +57,7 @@ struct ChatView: View {
         let index = appState.noteIndex
         let coreFS = DefaultFileSystemManager()
         let creator = AppNoteCreator(appState: appState)
-        let runner = ChatToolRunner(index: index, fileSystem: coreFS, noteCreator: creator)
+        let runner = ChatToolRunner(index: index, fileSystem: coreFS)
 
         let provider: any LLMProvider
         if settings.processingMode == .onDevice {
@@ -76,7 +76,7 @@ struct ChatView: View {
 
         let agent = ChatAgent(provider: provider, toolRunner: runner)
         let vm = await MainActor.run {
-            ChatViewModel(agent: agent, appState: appState)
+            ChatViewModel(agent: agent, appState: appState, noteCreator: creator)
         }
         // Drain any pending import that arrived before the view model existed.
         if let pending = appState.pendingImport {
@@ -104,9 +104,33 @@ private struct ChatConversationView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(viewModel.messages) { msg in
-                            ChatMessageRow(message: msg) { id, allow in
-                                viewModel.respondToApproval(id: id, allow: allow)
-                            }
+                            ChatMessageRow(
+                                message: msg,
+                                onRespondToApproval: { id, allow in
+                                    viewModel.respondToApproval(id: id, allow: allow)
+                                },
+                                onUpdateDraft: { messageId, draftId, mutate in
+                                    viewModel.updateDraft(
+                                        messageId: messageId,
+                                        draftId: draftId,
+                                        mutate: mutate
+                                    )
+                                },
+                                onToggleDraftIncluded: { messageId, draftId in
+                                    viewModel.toggleIncluded(messageId: messageId, draftId: draftId)
+                                },
+                                onRegenerateDrafts: { messageId, feedback in
+                                    Task {
+                                        await viewModel.regenerateDrafts(
+                                            messageId: messageId,
+                                            feedback: feedback
+                                        )
+                                    }
+                                },
+                                onSaveDrafts: { messageId in
+                                    Task { await viewModel.saveDrafts(messageId: messageId) }
+                                }
+                            )
                             .id(msg.id)
                         }
                         if viewModel.budgetExceeded {

@@ -69,6 +69,7 @@
 		CAFE0000000000000000B012 /* NotesBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F012 /* NotesBrowserView.swift */; };
 		CAFE0000000000000000B013 /* AppNoteCreator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F013 /* AppNoteCreator.swift */; };
 		CAFE0000000000000000B014 /* AttachmentProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F014 /* AttachmentProcessor.swift */; };
+		CAFE0000000000000000B015 /* DraftCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F015 /* DraftCard.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -159,6 +160,7 @@
 		CAFE0000000000000000F012 /* NotesBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesBrowserView.swift; sourceTree = "<group>"; };
 		CAFE0000000000000000F013 /* AppNoteCreator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNoteCreator.swift; sourceTree = "<group>"; };
 		CAFE0000000000000000F014 /* AttachmentProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentProcessor.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F015 /* DraftCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftCard.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -390,6 +392,7 @@
 				CAFE0000000000000000F010 /* ChatViewModel.swift */,
 				CAFE0000000000000000F00E /* ChatView.swift */,
 				CAFE0000000000000000F011 /* CitationChip.swift */,
+				CAFE0000000000000000F015 /* DraftCard.swift */,
 			);
 			path = Chat;
 			sourceTree = "<group>";
@@ -546,6 +549,7 @@
 				CAFE0000000000000000B012 /* NotesBrowserView.swift in Sources */,
 				CAFE0000000000000000B013 /* AppNoteCreator.swift in Sources */,
 				CAFE0000000000000000B014 /* AttachmentProcessor.swift in Sources */,
+				CAFE0000000000000000B015 /* DraftCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

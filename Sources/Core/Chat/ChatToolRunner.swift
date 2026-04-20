@@ -2,8 +2,8 @@ import Foundation
 
 private let maxResultBytes = 8_000
 
-/// App-layer bridge for tools that mutate user data. Injected so the runner
-/// stays free of UI/ViewModel dependencies.
+/// App-layer bridge for saving drafts. Used by the chat view model once the
+/// user approves a proposed draft — not by `ChatToolRunner`, which is pure.
 public protocol NoteCreating: Sendable {
     /// Create a note of the given `type` in the vault. Returns the resulting
     /// note's file path on success, or throws with a human-readable reason.
@@ -11,35 +11,33 @@ public protocol NoteCreating: Sendable {
 }
 
 /// Executes chat tool calls against the NoteIndex and file system.
-/// Returns a JSON string result and any NoteRefs cited.
+/// Returns a JSON string result, any NoteRefs cited, and any note drafts
+/// produced (for `propose_note`).
 public actor ChatToolRunner {
 
     private let index: NoteIndex
     private let fileSystem: FileSystemManager
     private let parser: ObsidianTodoParser
-    private let noteCreator: NoteCreating?
     private let webFetcher: WebContentFetcher
 
     public init(
         index: NoteIndex,
         fileSystem: FileSystemManager,
-        noteCreator: NoteCreating? = nil,
         webFetcher: WebContentFetcher = WebContentFetcher()
     ) {
         self.index = index
         self.fileSystem = fileSystem
         self.parser = ObsidianTodoParser()
-        self.noteCreator = noteCreator
         self.webFetcher = webFetcher
     }
 
     // MARK: - Dispatch
 
-    public func run(name: String, argumentsJSON: String) async -> (result: String, refs: [NoteRef]) {
+    public func run(name: String, argumentsJSON: String) async -> (result: String, refs: [NoteRef], drafts: [NoteEdit]) {
         guard let data = argumentsJSON.data(using: .utf8),
               let args = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         else {
-            return (errorJSON("invalid_arguments", "Could not parse tool arguments"), [])
+            return (errorJSON("invalid_arguments", "Could not parse tool arguments"), [], [])
         }
 
         switch name {
@@ -47,78 +45,87 @@ public actor ChatToolRunner {
             let query = args["query"] as? String ?? ""
             let limit = args["max_results"] as? Int ?? 20
             let mode = args["output_mode"] as? String ?? "snippets"
-            return await runSearchNotes(SearchNotesArgs(query: query, maxResults: limit, outputMode: mode))
+            let (r, refs) = await runSearchNotes(SearchNotesArgs(query: query, maxResults: limit, outputMode: mode))
+            return (r, refs, [])
 
         case "list_notes":
-            return await runListNotes(ListNotesArgs(
+            let (r, refs) = await runListNotes(ListNotesArgs(
                 folder: args["folder"] as? String,
                 tag: args["tag"] as? String,
                 limit: args["limit"] as? Int
             ))
+            return (r, refs, [])
 
         case "read_note":
             guard let file = args["note_file"] as? String else {
-                return (errorJSON("missing_argument", "note_file is required"), [])
+                return (errorJSON("missing_argument", "note_file is required"), [], [])
             }
-            return await runReadNote(ReadNoteArgs(
+            let (r, refs) = await runReadNote(ReadNoteArgs(
                 noteFile: file,
                 offset: args["offset"] as? Int,
                 limit: args["limit"] as? Int
             ))
+            return (r, refs, [])
 
         case "outline_note":
             guard let file = args["note_file"] as? String else {
-                return (errorJSON("missing_argument", "note_file is required"), [])
+                return (errorJSON("missing_argument", "note_file is required"), [], [])
             }
-            return await runOutlineNote(OutlineNoteArgs(noteFile: file))
+            let (r, refs) = await runOutlineNote(OutlineNoteArgs(noteFile: file))
+            return (r, refs, [])
 
         case "list_recent_notes":
-            return await runListRecentNotes(ListRecentNotesArgs(
+            let (r, refs) = await runListRecentNotes(ListRecentNotesArgs(
                 withinHours: args["within_hours"] as? Int,
                 limit: args["limit"] as? Int
             ))
+            return (r, refs, [])
 
-        case "create_note":
+        case "propose_note":
             guard let type = args["type"] as? String, let title = args["title"] as? String else {
-                return (errorJSON("missing_argument", "create_note requires 'type' and 'title'"), [])
+                return (errorJSON("missing_argument", "propose_note requires 'type' and 'title'"), [], [])
             }
             let tags = (args["tags"] as? [String]) ?? []
             let props = (args["properties"] as? [String: Any]) ?? [:]
             let stringProps = props.reduce(into: [String: String]()) { acc, pair in
                 acc[pair.key] = String(describing: pair.value)
             }
-            return await runCreateNote(CreateNoteArgs(type: type, title: title, tags: tags, properties: stringProps))
+            return runProposeNote(ProposeNoteArgs(type: type, title: title, tags: tags, properties: stringProps))
 
         case "web_fetch":
             guard let url = args["url"] as? String else {
-                return (errorJSON("missing_argument", "web_fetch requires 'url'"), [])
+                return (errorJSON("missing_argument", "web_fetch requires 'url'"), [], [])
             }
-            return await runWebFetch(WebFetchArgs(url: url))
+            let (r, refs) = await runWebFetch(WebFetchArgs(url: url))
+            return (r, refs, [])
 
         default:
-            return (errorJSON("unknown_tool", "No tool named '\(name)'"), [])
+            return (errorJSON("unknown_tool", "No tool named '\(name)'"), [], [])
         }
     }
 
-    /// Convenience for AppleIntelligenceProvider's typed tool structs.
-    public func runRaw<A>(name: String, args: A) async -> String where A: Sendable {
+    /// Convenience for AppleIntelligenceProvider's typed tool structs. Returns
+    /// the JSON result and any drafts produced; call sites that don't need
+    /// drafts can ignore the tuple's second element.
+    public func runRaw<A>(name: String, args: A) async -> (result: String, drafts: [NoteEdit]) where A: Sendable {
         switch args {
         case let a as SearchNotesArgs:
-            return await runSearchNotes(a).0
+            return (await runSearchNotes(a).0, [])
         case let a as ListNotesArgs:
-            return await runListNotes(a).0
+            return (await runListNotes(a).0, [])
         case let a as ReadNoteArgs:
-            return await runReadNote(a).0
+            return (await runReadNote(a).0, [])
         case let a as OutlineNoteArgs:
-            return await runOutlineNote(a).0
+            return (await runOutlineNote(a).0, [])
         case let a as ListRecentNotesArgs:
-            return await runListRecentNotes(a).0
-        case let a as CreateNoteArgs:
-            return await runCreateNote(a).0
+            return (await runListRecentNotes(a).0, [])
+        case let a as ProposeNoteArgs:
+            let out = runProposeNote(a)
+            return (out.0, out.2)
         case let a as WebFetchArgs:
-            return await runWebFetch(a).0
+            return (await runWebFetch(a).0, [])
         default:
-            return errorJSON("unsupported_args", "Unrecognised argument type")
+            return (errorJSON("unsupported_args", "Unrecognised argument type"), [])
         }
     }
 
@@ -235,24 +242,23 @@ public actor ChatToolRunner {
         return (json(result), [NoteRef(file: file)])
     }
 
-    private func runCreateNote(_ args: CreateNoteArgs) async -> (String, [NoteRef]) {
-        guard let creator = noteCreator else {
-            return (errorJSON("unsupported", "Note creation is not available in this context."), [])
+    private func runProposeNote(_ args: ProposeNoteArgs) -> (String, [NoteRef], [NoteEdit]) {
+        let properties: [String: PropertyValue] = args.properties.reduce(into: [:]) { acc, pair in
+            acc[pair.key] = .text(pair.value)
         }
-        do {
-            let filePath = try await creator.createNote(
-                type: args.type,
-                title: args.title,
-                tags: args.tags,
-                stringProperties: args.properties
-            )
-            return (
-                json(["created": true, "file": filePath, "title": args.title, "type": args.type]),
-                [NoteRef(file: filePath)]
-            )
-        } catch {
-            return (errorJSON("create_failed", error.localizedDescription), [])
-        }
+        let draft = NoteEdit(
+            type: args.type,
+            title: args.title,
+            properties: properties,
+            tags: args.tags
+        )
+        let result = json([
+            "proposed": true,
+            "draft_id": draft.id.uuidString,
+            "title": args.title,
+            "type": args.type
+        ])
+        return (result, [], [draft])
     }
 
     private func runWebFetch(_ args: WebFetchArgs) async -> (String, [NoteRef]) {

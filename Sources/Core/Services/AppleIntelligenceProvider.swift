@@ -2,6 +2,22 @@ import Foundation
 #if canImport(FoundationModels)
 import FoundationModels
 
+// MARK: - Draft collector
+
+/// Thread-safe collector for drafts produced by `FMProposeNoteTool` during a
+/// single `sess.respond(to:)` call. The provider drains it and yields a
+/// `.draftsProposed` stream event once the session finishes.
+@available(iOS 26.0, *)
+private actor DraftCollector {
+    private var drafts: [NoteEdit] = []
+    func append(_ items: [NoteEdit]) { drafts.append(contentsOf: items) }
+    func drain() -> [NoteEdit] {
+        let out = drafts
+        drafts.removeAll()
+        return out
+    }
+}
+
 // MARK: - Chat Tool wrappers for FoundationModels
 
 @available(iOS 26.0, *)
@@ -19,7 +35,7 @@ private struct FMSearchNotesTool: Tool {
     let runner: ChatToolRunner
     func call(arguments: Arguments) async throws -> String {
         let args = SearchNotesArgs(query: arguments.query, maxResults: arguments.maxResults)
-        return await runner.runRaw(name: name, args: args)
+        return await runner.runRaw(name: name, args: args).result
     }
 }
 
@@ -40,7 +56,7 @@ private struct FMListNotesTool: Tool {
     let runner: ChatToolRunner
     func call(arguments: Arguments) async throws -> String {
         let args = ListNotesArgs(folder: arguments.folder, tag: arguments.tag, limit: arguments.limit)
-        return await runner.runRaw(name: name, args: args)
+        return await runner.runRaw(name: name, args: args).result
     }
 }
 
@@ -61,7 +77,7 @@ private struct FMReadNoteTool: Tool {
     let runner: ChatToolRunner
     func call(arguments: Arguments) async throws -> String {
         let args = ReadNoteArgs(noteFile: arguments.noteFile, offset: arguments.offset, limit: arguments.limit)
-        return await runner.runRaw(name: name, args: args)
+        return await runner.runRaw(name: name, args: args).result
     }
 }
 
@@ -78,7 +94,7 @@ private struct FMOutlineNoteTool: Tool {
     let runner: ChatToolRunner
     func call(arguments: Arguments) async throws -> String {
         let args = OutlineNoteArgs(noteFile: arguments.noteFile)
-        return await runner.runRaw(name: name, args: args)
+        return await runner.runRaw(name: name, args: args).result
     }
 }
 
@@ -97,35 +113,43 @@ private struct FMListRecentNotesTool: Tool {
     let runner: ChatToolRunner
     func call(arguments: Arguments) async throws -> String {
         let args = ListRecentNotesArgs(withinHours: arguments.withinHours, limit: arguments.limit)
-        return await runner.runRaw(name: name, args: args)
+        return await runner.runRaw(name: name, args: args).result
     }
 }
 
-// Note: on the FoundationModels path tool calls happen inside
-// `sess.respond(to:)`, so the `ChatAgent` approval gate that runs on the
-// OpenAI path does not intercept them. Gated execution for on-device mode is
-// tracked as follow-up work; today these tools run immediately if the model
-// calls them.
-
+/// `propose_note` has no side effects — it hands a draft to the UI via the
+/// shared `DraftCollector`. The model is told (in the system prompt) that
+/// it must not save notes directly; the user saves drafts from the review card.
+///
+/// `properties` is intentionally omitted from `@Generable` args because
+/// FoundationModels' schema cannot represent `[String: String]`; users can
+/// add arbitrary properties via the draft card UI.
 @available(iOS 26.0, *)
-private struct FMCreateNoteTool: Tool {
-    let name = "create_note"
-    let description = "Create a new note (todo, book, movie, restaurant, etc.) in the vault."
+private struct FMProposeNoteTool: Tool {
+    let name = "propose_note"
+    let description = "Propose a draft note for the user to review, edit, and save. Call once per proposed note; call multiple times in one response to propose several."
 
     @Generable struct Arguments {
         @Guide(description: "Item type: 'todo', 'book', 'movie', 'restaurant', 'note', etc.")
         var type: String
         @Guide(description: "Required title of the note")
         var title: String
-        @Guide(description: "Optional tag, e.g. 'work' or 'work/project-alpha'")
-        var tag: String?
+        @Guide(description: "Optional tags, e.g. ['work', 'project/alpha']")
+        var tags: [String]?
     }
 
     let runner: ChatToolRunner
+    let collector: DraftCollector
     func call(arguments: Arguments) async throws -> String {
-        let tags = arguments.tag.map { [$0] } ?? []
-        let args = CreateNoteArgs(type: arguments.type, title: arguments.title, tags: tags)
-        return await runner.runRaw(name: name, args: args)
+        let args = ProposeNoteArgs(
+            type: arguments.type,
+            title: arguments.title,
+            tags: arguments.tags ?? [],
+            properties: [:]
+        )
+        let out = await runner.runRaw(name: name, args: args)
+        await collector.append(out.drafts)
+        return out.result
     }
 }
 
@@ -142,7 +166,7 @@ private struct FMWebFetchTool: Tool {
     let runner: ChatToolRunner
     func call(arguments: Arguments) async throws -> String {
         let args = WebFetchArgs(url: arguments.url)
-        return await runner.runRaw(name: name, args: args)
+        return await runner.runRaw(name: name, args: args).result
     }
 }
 
@@ -201,15 +225,16 @@ public final class AppleIntelligenceProvider: LLMProvider, @unchecked Sendable {
             if case .system(let t) = $0 { return t } else { return nil }
         }.joined(separator: "\n")
 
-        // Fresh session per streamStep — avoids state leaking across conversations
-        // and ensures any system-prompt change takes effect.
+        // Fresh collector + session per streamStep — avoids state leaking
+        // across conversations and ensures any system-prompt change takes effect.
+        let collector = DraftCollector()
         let fmTools: [any Tool] = [
             FMSearchNotesTool(runner: toolRunner),
             FMListNotesTool(runner: toolRunner),
             FMReadNoteTool(runner: toolRunner),
             FMOutlineNoteTool(runner: toolRunner),
             FMListRecentNotesTool(runner: toolRunner),
-            FMCreateNoteTool(runner: toolRunner),
+            FMProposeNoteTool(runner: toolRunner, collector: collector),
             FMWebFetchTool(runner: toolRunner)
         ]
         let sess = LanguageModelSession(tools: fmTools, instructions: systemPrompt)
@@ -224,6 +249,10 @@ public final class AppleIntelligenceProvider: LLMProvider, @unchecked Sendable {
         let text = response.content
 
         continuation.yield(.assistantDelta(text))
+        let drafts = await collector.drain()
+        if !drafts.isEmpty {
+            continuation.yield(.draftsProposed(drafts))
+        }
         continuation.yield(.finish(.stop))
         continuation.finish()
     }
