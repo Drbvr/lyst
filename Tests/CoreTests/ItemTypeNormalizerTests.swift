@@ -30,5 +30,12 @@ final class ItemTypeNormalizerTests: XCTestCase {
         )
         XCTAssertEqual(type, "news")
     }
-}
 
+    func testCanonicalTypeHandlesIesPluralForm() {
+        let type = ItemTypeNormalizer.canonicalType(
+            from: "movies",
+            knownTypes: ["movie", "book"]
+        )
+        XCTAssertEqual(type, "movie")
+    }
+}

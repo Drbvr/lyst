@@ -20,13 +20,31 @@ public enum ItemTypeNormalizer {
             return cleaned
         }
 
-        if cleaned.hasSuffix("s"), cleaned.count > 1 {
-            let singular = String(cleaned.dropLast())
-            if normalisedKnownTypes.contains(singular) {
-                return singular
+        for knownType in normalisedKnownTypes {
+            if cleaned == pluralForm(of: knownType) {
+                return knownType
             }
         }
 
         return cleaned
+    }
+
+    private static func pluralForm(of singular: String) -> String {
+        guard !singular.isEmpty else { return singular }
+
+        if singular.hasSuffix("y"), singular.count > 1 {
+            return String(singular.dropLast()) + "ies"
+        }
+
+        if singular.hasSuffix("s")
+            || singular.hasSuffix("x")
+            || singular.hasSuffix("z")
+            || singular.hasSuffix("ch")
+            || singular.hasSuffix("sh")
+        {
+            return singular + "es"
+        }
+
+        return singular + "s"
     }
 }
