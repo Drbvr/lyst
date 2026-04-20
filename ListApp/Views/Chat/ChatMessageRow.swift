@@ -4,6 +4,10 @@ import Core
 struct ChatMessageRow: View {
     let message: ChatMessage
     var onRespondToApproval: ((_ id: String, _ allow: Bool) -> Void)? = nil
+    var onUpdateDraft: ((_ messageId: UUID, _ draftId: UUID, _ mutate: (inout NoteEdit) -> Void) -> Void)? = nil
+    var onToggleDraftIncluded: ((_ messageId: UUID, _ draftId: UUID) -> Void)? = nil
+    var onRegenerateDrafts: ((_ messageId: UUID, _ feedback: String) -> Void)? = nil
+    var onSaveDrafts: ((_ messageId: UUID) -> Void)? = nil
 
     @Environment(AppState.self) private var appState
     @State private var expandedToolCall: String? = nil
@@ -13,6 +17,23 @@ struct ChatMessageRow: View {
             bubbleView
             if !message.toolCalls.isEmpty {
                 toolCallsView
+            }
+            if let bundle = message.draftBundle {
+                DraftCard(
+                    bundle: bundle,
+                    onUpdate: { draftId, mutate in
+                        onUpdateDraft?(message.id, draftId, mutate)
+                    },
+                    onToggleIncluded: { draftId in
+                        onToggleDraftIncluded?(message.id, draftId)
+                    },
+                    onRegenerate: { feedback in
+                        onRegenerateDrafts?(message.id, feedback)
+                    },
+                    onSave: {
+                        onSaveDrafts?(message.id)
+                    }
+                )
             }
             if !message.citations.isEmpty {
                 citationsView
@@ -110,7 +131,6 @@ private struct ApprovalCard: View {
 
     private var title: String {
         switch call.name {
-        case "create_note": return "Create note?"
         case "web_fetch":   return "Fetch URL?"
         default:            return "Run \(call.name)?"
         }
@@ -118,7 +138,6 @@ private struct ApprovalCard: View {
 
     private var icon: String {
         switch call.name {
-        case "create_note": return "doc.badge.plus"
         case "web_fetch":   return "link"
         default:            return "questionmark.circle"
         }

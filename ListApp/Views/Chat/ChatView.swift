@@ -57,7 +57,7 @@ struct ChatView: View {
         let index = appState.noteIndex
         let coreFS = DefaultFileSystemManager()
         let creator = AppNoteCreator(appState: appState)
-        let runner = ChatToolRunner(index: index, fileSystem: coreFS, noteCreator: creator)
+        let runner = ChatToolRunner(index: index, fileSystem: coreFS)
 
         let provider: any LLMProvider
         if settings.processingMode == .onDevice {
@@ -76,7 +76,7 @@ struct ChatView: View {
 
         let agent = ChatAgent(provider: provider, toolRunner: runner)
         let vm = await MainActor.run {
-            ChatViewModel(agent: agent, appState: appState)
+            ChatViewModel(agent: agent, appState: appState, noteCreator: creator)
         }
         // Drain any pending import that arrived before the view model existed.
         if let pending = appState.pendingImport {
@@ -94,7 +94,9 @@ private struct ChatConversationView: View {
     @Environment(AppState.self) private var appState
 
     @State private var selectedPhoto: PhotosPickerItem? = nil
+    @State private var isPhotoPickerPresented: Bool = false
     @State private var isLoadingPhoto: Bool = false
+    @FocusState private var isComposerFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -102,9 +104,33 @@ private struct ChatConversationView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(viewModel.messages) { msg in
-                            ChatMessageRow(message: msg) { id, allow in
-                                viewModel.respondToApproval(id: id, allow: allow)
-                            }
+                            ChatMessageRow(
+                                message: msg,
+                                onRespondToApproval: { id, allow in
+                                    viewModel.respondToApproval(id: id, allow: allow)
+                                },
+                                onUpdateDraft: { messageId, draftId, mutate in
+                                    viewModel.updateDraft(
+                                        messageId: messageId,
+                                        draftId: draftId,
+                                        mutate: mutate
+                                    )
+                                },
+                                onToggleDraftIncluded: { messageId, draftId in
+                                    viewModel.toggleIncluded(messageId: messageId, draftId: draftId)
+                                },
+                                onRegenerateDrafts: { messageId, feedback in
+                                    Task {
+                                        await viewModel.regenerateDrafts(
+                                            messageId: messageId,
+                                            feedback: feedback
+                                        )
+                                    }
+                                },
+                                onSaveDrafts: { messageId in
+                                    Task { await viewModel.saveDrafts(messageId: messageId) }
+                                }
+                            )
                             .id(msg.id)
                         }
                         if viewModel.budgetExceeded {
@@ -113,6 +139,13 @@ private struct ChatConversationView: View {
                     }
                     .padding(.vertical, 12)
                 }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isComposerFocused = false
+                }
+#if os(iOS)
+                .scrollDismissesKeyboard(.interactively)
+#endif
                 .onChange(of: viewModel.messages.count) { _, _ in
                     scrollToBottom(proxy: proxy)
                 }
@@ -191,6 +224,7 @@ private struct ChatConversationView: View {
                 .padding(.vertical, 8)
                 .background(Color(.secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
+                .focused($isComposerFocused)
                 .onSubmit {
                     sendIfAllowed()
                 }
@@ -214,6 +248,16 @@ private struct ChatConversationView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+#if os(iOS)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isComposerFocused = false
+                }
+            }
+        }
+#endif
     }
 
     private var canSend: Bool {
@@ -223,13 +267,16 @@ private struct ChatConversationView: View {
 
     private func sendIfAllowed() {
         guard canSend else { return }
+        isComposerFocused = false
         Task { await viewModel.send() }
     }
 
     @ViewBuilder
     private var attachmentMenu: some View {
         Menu {
-            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+            Button {
+                isPhotoPickerPresented = true
+            } label: {
                 Label("Add Photo", systemImage: "photo")
             }
             #if os(iOS)
@@ -257,6 +304,7 @@ private struct ChatConversationView: View {
             }
         }
         .disabled(viewModel.isGenerating)
+        .photosPicker(isPresented: $isPhotoPickerPresented, selection: $selectedPhoto, matching: .images)
     }
 
     // MARK: - Attachment helpers

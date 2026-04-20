@@ -45,10 +45,24 @@ public struct ToolCallRecord: Sendable, Codable, Identifiable {
 
 /// Names of tools that require user approval before execution.
 public enum GatedChatTools {
-    public static let names: Set<String> = ["create_note", "web_fetch"]
+    public static let names: Set<String> = ["web_fetch"]
 
     public static func requiresApproval(_ name: String) -> Bool {
         names.contains(name)
+    }
+}
+
+/// A collection of note drafts proposed by the assistant in a single turn,
+/// to be reviewed and optionally saved by the user.
+public struct DraftBundle: Sendable, Identifiable {
+    public let id: UUID
+    public var drafts: [NoteEdit]
+    public var isSaved: Bool
+
+    public init(id: UUID = UUID(), drafts: [NoteEdit], isSaved: Bool = false) {
+        self.id = id
+        self.drafts = drafts
+        self.isSaved = isSaved
     }
 }
 
@@ -59,6 +73,7 @@ public struct ChatMessage: Sendable, Identifiable {
     public var content: String
     public var toolCalls: [ToolCallRecord]
     public var citations: [NoteRef]
+    public var draftBundle: DraftBundle?
     public let timestamp: Date
 
     public init(
@@ -67,6 +82,7 @@ public struct ChatMessage: Sendable, Identifiable {
         content: String = "",
         toolCalls: [ToolCallRecord] = [],
         citations: [NoteRef] = [],
+        draftBundle: DraftBundle? = nil,
         timestamp: Date = Date()
     ) {
         self.id = id
@@ -74,6 +90,7 @@ public struct ChatMessage: Sendable, Identifiable {
         self.content = content
         self.toolCalls = toolCalls
         self.citations = citations
+        self.draftBundle = draftBundle
         self.timestamp = timestamp
     }
 }

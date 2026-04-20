@@ -1,7 +1,7 @@
 import Foundation
 
 /// A parsed note that the user can review, edit, and optionally save during a batch import.
-public struct NoteEdit: Identifiable {
+public struct NoteEdit: Identifiable, Codable, Sendable, Hashable {
     public var id = UUID()
     public var type: String
     public var title: String

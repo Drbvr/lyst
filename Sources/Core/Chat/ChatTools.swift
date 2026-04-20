@@ -42,7 +42,7 @@ public struct ListRecentNotesArgs: Sendable {
     }
 }
 
-public struct CreateNoteArgs: Sendable {
+public struct ProposeNoteArgs: Sendable {
     public let type: String
     public let title: String
     public let tags: [String]
@@ -59,14 +59,15 @@ public struct WebFetchArgs: Sendable {
 
 // MARK: - Tool definitions
 
-/// Tools exposed to OpenAI-compatible endpoints. The last two (`create_note`
-/// and `web_fetch`) are gated — see `GatedChatTools` — and require explicit
-/// user approval before the runner executes them.
+/// Tools exposed to OpenAI-compatible endpoints. `web_fetch` is gated — see
+/// `GatedChatTools` — and requires explicit user approval before the runner
+/// executes it. `propose_note` has no side effects (it hands a draft to the
+/// UI for review) so runs without approval.
 public enum ChatTools {
 
     public static let all: [LLMToolDefinition] = [
         listNotes, searchNotes, readNote, outlineNote, listRecentNotes,
-        createNote, webFetch
+        proposeNote, webFetch
     ]
 
     public static let searchNotes = LLMToolDefinition(
@@ -163,9 +164,9 @@ public enum ChatTools {
         """
     )
 
-    public static let createNote = LLMToolDefinition(
-        name: "create_note",
-        description: "Create a new note (todo, book, movie, restaurant, etc.) in the vault. Requires explicit user approval before running.",
+    public static let proposeNote = LLMToolDefinition(
+        name: "propose_note",
+        description: "Propose a draft note (todo, book, movie, restaurant, note, etc.) for the user to review, edit, and save. Call this once per proposed note — call it multiple times in one response to propose several. Do not save notes yourself; the user saves drafts from the review card.",
         parametersJSON: """
         {
           "type": "object",
