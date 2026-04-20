@@ -21,7 +21,7 @@ struct AppNoteCreator: NoteCreating {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { throw NoteCreateError.missingTitle }
 
-        let normalisedType = type.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalisedType = canonicalType(from: type)
         guard !normalisedType.isEmpty else { throw NoteCreateError.invalidType }
 
         let properties = Self.convertProperties(stringProperties)
@@ -41,6 +41,27 @@ struct AppNoteCreator: NoteCreating {
     }
 
     // MARK: - Helpers
+
+    private func canonicalType(from rawType: String) -> String {
+        let cleaned = rawType.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return cleaned }
+
+        let knownTypes = Set(appState.listTypes.map { $0.name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
+        guard !knownTypes.isEmpty else { return cleaned }
+
+        if knownTypes.contains(cleaned) {
+            return cleaned
+        }
+
+        if cleaned.hasSuffix("s") {
+            let singular = String(cleaned.dropLast())
+            if knownTypes.contains(singular) {
+                return singular
+            }
+        }
+
+        return cleaned
+    }
 
     static func convertProperties(_ raw: [String: String]) -> [String: PropertyValue] {
         var result: [String: PropertyValue] = [:]
