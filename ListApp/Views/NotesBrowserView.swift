@@ -1,48 +1,113 @@
 import SwiftUI
 import Core
 
-/// Single "Notes" tab merging Search + Filter + Tags + SavedViews.
+// MARK: - Filter state
+
+/// Ad-hoc filter state for the Notes page. Mirrors the structure in the
+/// design handoff: single-select type, tri-state completion, multi-select
+/// tags, single-select due window.
+struct NotesFilterState: Equatable {
+    enum Status: String, Equatable, CaseIterable {
+        case all
+        case open
+        case done
+    }
+
+    enum Due: Equatable {
+        case any
+        case today
+        case thisWeek
+        case overdue
+        case custom(start: Date, end: Date)
+
+        var summaryLabel: String? {
+            switch self {
+            case .any:        return nil
+            case .today:      return "Due today"
+            case .thisWeek:   return "This week"
+            case .overdue:    return "Overdue"
+            case .custom(let start, let end):
+                let f = DateFormatter()
+                f.dateFormat = "MMM d"
+                return "\(f.string(from: start))–\(f.string(from: end))"
+            }
+        }
+    }
+
+    var type: String? = nil          // lowercase: "todo", "book", "movie", "restaurant"
+    var status: Status = .all
+    var tags: Set<String> = []
+    var due: Due = .any
+
+    var isDefault: Bool {
+        type == nil && status == .all && tags.isEmpty && due == .any
+    }
+
+    /// How many non-default sub-filters are applied. Used to badge the
+    /// Filter button.
+    var activeCount: Int {
+        var n = 0
+        if type != nil { n += 1 }
+        if status != .all { n += 1 }
+        n += tags.count
+        if due != .any { n += 1 }
+        return n
+    }
+}
+
+// MARK: - Sort mode
+
+enum NotesSortMode: String, CaseIterable, Identifiable {
+    case dateAdded
+    case dueDate
+    case priority
+    case titleAZ
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .dateAdded: return "By date added"
+        case .dueDate:   return "By due date"
+        case .priority:  return "By priority"
+        case .titleAZ:   return "Title A→Z"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .dateAdded: return "calendar"
+        case .dueDate:   return "clock"
+        case .priority:  return "exclamationmark.triangle"
+        case .titleAZ:   return "textformat"
+        }
+    }
+}
+
+// MARK: - View
+
+/// Results-first Notes tab.
 ///
-/// Layout:
-///   - Saved-view shortcuts row (horizontal scroll) at the top.
-///   - Type pills (All + per-type).
-///   - Segmented status picker (All / Incomplete / Completed).
-///   - Collapsible tag groups (top-level + sub-tags).
-///   - Results list at the bottom, narrowed by searchable text + filters.
+/// Collapses the old stack of filter surfaces (Saved Views, Type pills,
+/// Status picker, Tag groups, Search) into a compact top bar + bottom sheet,
+/// so the actual list of notes is always visible on first load.
 struct NotesBrowserView: View {
     @Environment(AppState.self) private var appState
 
-    @State private var searchText: String = ""
-    @State private var selectedTypes: Set<String> = []
-    @State private var selectedTags: Set<String> = []
-    @State private var completionFilter: CompletionFilter = .all
-    @State private var expandedGroups: Set<String> = []
-    @State private var showSaveSheet: Bool = false
+    @State private var query: String = ""
+    @State private var selectedSavedViewID: SavedView.ID? = nil
+    @State private var activeFilter: NotesFilterState = .init()
+    @State private var sortMode: NotesSortMode = .dateAdded
+
+    @State private var showFilterSheet: Bool = false
     @State private var showAddSavedView: Bool = false
+    @State private var showSaveCurrent: Bool = false
 
-    private enum CompletionFilter: String, CaseIterable {
-        case all = "All"
-        case incomplete = "Incomplete"
-        case completed = "Completed"
-    }
+    // MARK: - Derived data
 
-    // MARK: - Computed filters
-
-    private var currentFilters: ViewFilters {
-        ViewFilters(
-            tags: selectedTags.isEmpty ? nil : Array(selectedTags),
-            itemTypes: selectedTypes.isEmpty ? nil : Array(selectedTypes),
-            completed: completionFilter == .all ? nil : completionFilter == .completed
-        )
-    }
-
-    private var hasActiveFilters: Bool {
-        !selectedTags.isEmpty || !selectedTypes.isEmpty || completionFilter != .all
-    }
-
-    private var filteredItems: [Item] {
-        let base = appState.filteredItems(with: currentFilters)
-        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var matchingItems: [Item] {
+        let base = applyFilters(to: appState.items, filters: activeFilter)
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return base }
         let q = trimmed.lowercased()
         return base.filter { item in
@@ -52,95 +117,49 @@ struct NotesBrowserView: View {
         }
     }
 
-    private var typeStatusFilteredItems: [Item] {
-        appState.filteredItems(with: ViewFilters(
-            tags: nil,
-            itemTypes: selectedTypes.isEmpty ? nil : Array(selectedTypes),
-            completed: completionFilter == .all ? nil : completionFilter == .completed
-        ))
+    private var sortedItems: [Item] {
+        sort(items: matchingItems, by: sortMode)
     }
 
-    private var availableTagGroups: [(tag: String, count: Int, children: [(tag: String, count: Int)])] {
-        let items = typeStatusFilteredItems
-        var groups: [String: Set<String>] = [:]
-        var tagCounts: [String: Int] = [:]
-        var topLevelCounts: [String: Int] = [:]
-
-        for item in items {
-            let uniqueTags = Set(item.tags.filter { !$0.isEmpty })
-            var itemTopLevels: Set<String> = []
-
-            for tag in uniqueTags {
-                let topLevel = String(tag.split(separator: "/").first ?? Substring(tag))
-                groups[topLevel, default: Set()].insert(tag)
-                tagCounts[tag, default: 0] += 1
-                itemTopLevels.insert(topLevel)
-            }
-
-            for topLevel in itemTopLevels {
-                topLevelCounts[topLevel, default: 0] += 1
-            }
-        }
-
-        return groups.keys.sorted().map { topLevel in
-            let allTagsForGroup = groups[topLevel] ?? Set()
-            let children = allTagsForGroup
-                .filter { $0.contains("/") }
-                .sorted()
-                .map { childTag in
-                    (tag: childTag, count: tagCounts[childTag, default: 0])
-                }
-            let totalCount = topLevelCounts[topLevel, default: 0]
-            return (tag: topLevel, count: totalCount, children: children)
-        }
+    private var groupedSections: [ItemSection] {
+        group(items: sortedItems, by: sortMode)
     }
 
-    // MARK: - View
+    private var totalNoteCount: Int { appState.items.count }
+
+    private var hasActiveFilters: Bool { !activeFilter.isDefault }
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
-            List {
-                savedViewsSection
-                filtersSection
-                tagsSection
-                resultsSection
-            }
-            .listStyle(.insetGrouped)
-            .searchable(text: $searchText, prompt: "Search notes…")
-            .noAutocapitalization()
-            .autocorrectionDisabled()
-            .navigationTitle("Notes")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button {
-                            showAddSavedView = true
-                        } label: {
-                            Label("New Saved View…", systemImage: "bookmark")
-                        }
-                        if hasActiveFilters {
-                            Button {
-                                showSaveSheet = true
-                            } label: {
-                                Label("Save Current Filters…", systemImage: "square.and.arrow.down")
-                            }
-                            Button(role: .destructive) {
-                                resetFilters()
-                            } label: {
-                                Label("Reset Filters", systemImage: "xmark.circle")
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
+            VStack(spacing: 0) {
+                searchFilterRow
+                savedViewsStrip
+                if hasActiveFilters && selectedSavedViewID == nil {
+                    activeFiltersCard
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
+                resultsList
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Notes")
+            .toolbar { toolbarContent }
+            .sheet(isPresented: $showFilterSheet) {
+                NotesFilterSheet(
+                    initialFilter: activeFilter,
+                    savedViewID: selectedSavedViewID
+                ) { newFilter in
+                    applyFromSheet(newFilter)
+                }
+                .environment(appState)
             }
             .sheet(isPresented: $showAddSavedView) {
                 AddSavedViewSheet()
                     .environment(appState)
             }
-            .sheet(isPresented: $showSaveSheet) {
-                AddSavedViewSheet(presetFilters: currentFilters)
+            .sheet(isPresented: $showSaveCurrent) {
+                AddSavedViewSheet(presetFilters: filtersAsViewFilters(activeFilter))
                     .environment(appState)
             }
             .navigationDestination(for: SavedView.self) { savedView in
@@ -150,302 +169,580 @@ struct NotesBrowserView: View {
                     displayStyle: savedView.displayStyle
                 )
             }
-        }
-    }
-
-    // MARK: - Saved views
-
-    @ViewBuilder
-    private var savedViewsSection: some View {
-        if !appState.savedViews.isEmpty {
-            Section {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(appState.savedViews) { savedView in
-                            NavigationLink(value: savedView) {
-                                savedViewCard(savedView)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.vertical, 6)
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-            } header: {
-                Text("Saved Views")
+            .navigationDestination(for: Item.self) { item in
+                ItemDetailView(item: item)
             }
         }
     }
 
-    private func savedViewCard(_ view: SavedView) -> some View {
-        let typeName = view.filters.itemTypes?.first ?? ""
-        let accent = color(for: typeName)
-        let count = appState.filteredItems(for: view).count
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Image(systemName: icon(for: typeName))
-                    .foregroundStyle(accent)
-                Spacer()
-                Text("\(count)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(accent)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(accent.opacity(0.15))
-                    .clipShape(Capsule())
-            }
-            Text(view.name)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-        }
-        .padding(12)
-        .frame(width: 150, alignment: .leading)
-        .background(accent.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(accent.opacity(0.18), lineWidth: 1)
-        )
-    }
+    // MARK: - Toolbar
 
-    // MARK: - Filters (type + status)
-
-    @ViewBuilder
-    private var filtersSection: some View {
-        Section {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    TypePill(label: "All", icon: "square.grid.2x2", isSelected: selectedTypes.isEmpty) {
-                        selectedTypes = []
-                    }
-                    ForEach(appState.itemTypeNames, id: \.self) { type in
-                        TypePill(
-                            label: type.capitalized,
-                            icon: icon(for: type),
-                            isSelected: selectedTypes.contains(type)
-                        ) {
-                            if selectedTypes.contains(type) {
-                                selectedTypes.remove(type)
-                            } else {
-                                selectedTypes.insert(type)
-                            }
-                        }
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Menu {
+                Picker("Sort", selection: $sortMode) {
+                    ForEach(NotesSortMode.allCases) { mode in
+                        Label(mode.label, systemImage: mode.iconName).tag(mode)
                     }
                 }
-                .padding(.vertical, 4)
+            } label: {
+                Image(systemName: "arrow.up.arrow.down")
             }
-            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-
-            Picker("Status", selection: $completionFilter) {
-                ForEach(CompletionFilter.allCases, id: \.self) { f in
-                    Text(f.rawValue).tag(f)
-                }
-            }
-            .pickerStyle(.segmented)
-        } header: {
-            Text("Filters")
+            .accessibilityLabel("Sort")
         }
-    }
-
-    // MARK: - Tags
-
-    @ViewBuilder
-    private var tagsSection: some View {
-        if !availableTagGroups.isEmpty {
-            Section("Tags") {
-                ForEach(availableTagGroups, id: \.tag) { group in
-                    tagGroupRow(group)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func tagGroupRow(_ group: (tag: String, count: Int, children: [(tag: String, count: Int)])) -> some View {
-        let topIsSelected = selectedTags.contains(group.tag)
-            || selectedTags.contains { $0.hasPrefix(group.tag + "/") }
-
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
+        ToolbarItem(placement: .primaryAction) {
+            Menu {
                 Button {
-                    toggleTopLevelTag(group.tag, children: group.children)
+                    showAddSavedView = true
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: topIsSelected ? "tag.fill" : "tag")
-                            .foregroundStyle(topIsSelected ? Color.accentColor : .secondary)
-                        Text(group.tag)
-                            .font(.subheadline.weight(topIsSelected ? .semibold : .regular))
-                            .foregroundStyle(topIsSelected ? Color.accentColor : .primary)
-                        Text("\(group.count)")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.secondary.opacity(0.12))
-                            .clipShape(Capsule())
-                    }
+                    Label("New Saved View…", systemImage: "bookmark")
                 }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                if !group.children.isEmpty {
+                if hasActiveFilters {
                     Button {
-                        if expandedGroups.contains(group.tag) {
-                            expandedGroups.remove(group.tag)
-                        } else {
-                            expandedGroups.insert(group.tag)
+                        showSaveCurrent = true
+                    } label: {
+                        Label("Save Current Filters…", systemImage: "square.and.arrow.down")
+                    }
+                    Button(role: .destructive) {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            resetFilters()
                         }
                     } label: {
-                        Image(systemName: expandedGroups.contains(group.tag)
-                              ? "chevron.up" : "chevron.down")
-                            .font(.caption.bold())
+                        Label("Reset Filters", systemImage: "xmark.circle")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+            .accessibilityLabel("More")
+        }
+    }
+
+    // MARK: - Search + filter row
+
+    private var searchFilterRow: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search notes", text: $query)
+                    .noAutocapitalization()
+                    .autocorrectionDisabled()
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(.secondarySystemFill))
+            )
+
+            Button {
+                showFilterSheet = true
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Filters")
+                        .font(.system(size: 15, weight: .medium))
+                    if activeFilter.activeCount > 0 {
+                        Text("\(activeFilter.activeCount)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Color.accentColor))
+                    }
+                }
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color(.secondarySystemFill))
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Filters, \(activeFilter.activeCount) active")
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
+    }
+
+    // MARK: - Saved views chip strip
+
+    private var savedViewsStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                SavedViewChip(
+                    icon: "square.grid.2x2",
+                    label: "All",
+                    count: totalNoteCount,
+                    isSelected: selectedSavedViewID == nil && !hasActiveFilters
+                ) {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        selectedSavedViewID = nil
+                        activeFilter = .init()
+                    }
+                }
+                ForEach(appState.savedViews) { view in
+                    SavedViewChip(
+                        icon: iconForSavedView(view),
+                        label: view.name,
+                        count: appState.filteredItems(for: view).count,
+                        isSelected: selectedSavedViewID == view.id
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            selectedSavedViewID = view.id
+                            activeFilter = filtersFromSavedView(view)
+                        }
+                    }
+                    .contextMenu {
+                        Button {
+                            showAddSavedView = true
+                        } label: {
+                            Label("Edit Saved Views…", systemImage: "pencil")
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 2)
+        }
+        .padding(.bottom, 10)
+    }
+
+    // MARK: - Active filters card
+
+    private var activeFiltersCard: some View {
+        HStack(spacing: 6) {
+            Text("Active")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+
+            if let type = activeFilter.type {
+                FilterPill(label: type.capitalized) {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        activeFilter.type = nil
+                        selectedSavedViewID = nil
+                    }
+                }
+            }
+            if activeFilter.status != .all {
+                FilterPill(label: activeFilter.status == .open ? "Open" : "Done") {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        activeFilter.status = .all
+                        selectedSavedViewID = nil
+                    }
+                }
+            }
+            ForEach(Array(activeFilter.tags).sorted(), id: \.self) { tag in
+                FilterPill(label: "#\(tag)") {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        activeFilter.tags.remove(tag)
+                        selectedSavedViewID = nil
+                    }
+                }
+            }
+            if let dueLabel = activeFilter.due.summaryLabel {
+                FilterPill(label: dueLabel) {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        activeFilter.due = .any
+                        selectedSavedViewID = nil
+                    }
                 }
             }
 
-            if !group.children.isEmpty && expandedGroups.contains(group.tag) {
-                FlowLayout(spacing: 6) {
-                    ForEach(group.children, id: \.tag) { child in
-                        FilterTagChip(
-                            tag: child.tag,
-                            isSelected: selectedTags.contains(child.tag)
-                        ) {
-                            if selectedTags.contains(child.tag) {
-                                selectedTags.remove(child.tag)
-                            } else {
-                                selectedTags.insert(child.tag)
+            Spacer(minLength: 4)
+
+            Text("\(matchingItems.count) results")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color(.separator), lineWidth: 0.5)
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 10)
+    }
+
+    // MARK: - Results list
+
+    @ViewBuilder
+    private var resultsList: some View {
+        if sortedItems.isEmpty {
+            ContentUnavailableView(
+                hasActiveFilters || !query.isEmpty ? "No matches" : "No notes",
+                systemImage: "tray",
+                description: Text(hasActiveFilters || !query.isEmpty
+                                  ? "Try clearing filters or search terms."
+                                  : "Create your first note from the Chat tab.")
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            List {
+                ForEach(groupedSections) { section in
+                    Section {
+                        ForEach(section.items) { item in
+                            let current = appState.items.first(where: { $0.id == item.id }) ?? item
+                            NavigationLink(value: current) {
+                                ItemRowView(item: current) {
+                                    appState.toggleCompletion(for: current)
+                                }
+                            }
+                            .swipeActions(edge: .leading) {
+                                if current.type == "todo" {
+                                    Button {
+                                        appState.toggleCompletion(for: current)
+                                    } label: {
+                                        Label(
+                                            current.completed ? "Undo" : "Done",
+                                            systemImage: current.completed
+                                                ? "arrow.uturn.backward"
+                                                : "checkmark"
+                                        )
+                                    }
+                                    .tint(current.completed ? .orange : .green)
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    appState.deleteItem(current)
+                                } label: {
+                                    Label("Delete", systemImage: "archivebox")
+                                }
+                                .accessibilityLabel("Delete \(current.title)")
+                            }
+                        }
+                    } header: {
+                        if let title = section.title {
+                            HStack {
+                                Text(title)
+                                if let trailing = section.trailingLabel {
+                                    Spacer()
+                                    Text(trailing)
+                                        .textCase(nil)
+                                }
                             }
                         }
                     }
                 }
-                .padding(.top, 8)
             }
+            .listStyle(.insetGrouped)
         }
     }
 
-    // MARK: - Results
+    // MARK: - Filter application helpers
 
-    @ViewBuilder
-    private var resultsSection: some View {
-        Section {
-            if filteredItems.isEmpty {
-                ContentUnavailableView(
-                    hasActiveFilters || !searchText.isEmpty ? "No matches" : "No notes",
-                    systemImage: "tray",
-                    description: Text(hasActiveFilters || !searchText.isEmpty
-                                      ? "Try clearing filters or search terms."
-                                      : "Create your first note from the Chat tab.")
-                )
-                .listRowBackground(Color.clear)
-            } else {
-                ForEach(filteredItems) { item in
-                    NavigationLink {
-                        ItemDetailView(item: item)
-                    } label: {
-                        ItemRowView(item: item) {
-                            appState.toggleCompletion(for: item)
-                        }
-                    }
-                }
-            }
-        } header: {
-            HStack {
-                Text("Results")
-                Spacer()
-                Text("\(filteredItems.count) of \(appState.items.count)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
+    private func applyFilters(to items: [Item], filters: NotesFilterState) -> [Item] {
+        NotesFilterEvaluator.apply(filters, to: items)
     }
 
-    // MARK: - Helpers
+    private func filtersAsViewFilters(_ f: NotesFilterState) -> ViewFilters {
+        NotesFilterEvaluator.viewFilters(for: f)
+    }
 
-    private func toggleTopLevelTag(_ tag: String, children: [(tag: String, count: Int)]) {
-        let childTags = children.map(\.tag)
-        let anySelected = selectedTags.contains(tag) || childTags.contains { selectedTags.contains($0) }
-        if anySelected {
-            selectedTags.remove(tag)
-            childTags.forEach { selectedTags.remove($0) }
+    private func filtersFromSavedView(_ view: SavedView) -> NotesFilterState {
+        var state = NotesFilterState()
+        state.type = view.filters.itemTypes?.first
+        state.tags = Set(view.filters.tags ?? [])
+        if let c = view.filters.completed {
+            state.status = c ? .done : .open
         } else {
-            // Core tag filtering is exact-match, so selecting a group needs to
-            // insert every descendant tag as well — otherwise toggling "work"
-            // wouldn't match items only tagged "work/project".
-            selectedTags.insert(tag)
-            childTags.forEach { selectedTags.insert($0) }
+            state.status = .all
+        }
+        return state
+    }
+
+    private func applyFromSheet(_ newFilter: NotesFilterState) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            activeFilter = newFilter
+            selectedSavedViewID = nil
         }
     }
 
     private func resetFilters() {
-        selectedTags = []
-        selectedTypes = []
-        completionFilter = .all
+        activeFilter = .init()
+        selectedSavedViewID = nil
     }
 
-    private func icon(for typeName: String) -> String {
-        switch typeName {
+    private func iconForSavedView(_ view: SavedView) -> String {
+        iconForType(view.filters.itemTypes?.first ?? "")
+    }
+
+    private func iconForType(_ typeName: String) -> String {
+        switch typeName.lowercased() {
         case "todo":       return "checkmark.circle"
-        case "book":       return "book.closed"
+        case "book":       return "book"
         case "movie":      return "film"
         case "restaurant": return "fork.knife"
-        default:           return "doc.text"
+        default:           return "bookmark"
         }
     }
 
-    private func color(for typeName: String) -> Color {
-        switch typeName {
-        case "todo":       return .blue
-        case "book":       return .orange
-        case "movie":      return .purple
-        case "restaurant": return .red
-        default:           return .teal
+    // MARK: - Sorting & grouping
+
+    private func sort(items: [Item], by mode: NotesSortMode) -> [Item] {
+        switch mode {
+        case .dateAdded:
+            return items.sorted { $0.createdAt > $1.createdAt }
+        case .dueDate:
+            return items.sorted { lhs, rhs in
+                let lDue = due(for: lhs) ?? .distantFuture
+                let rDue = due(for: rhs) ?? .distantFuture
+                return lDue < rDue
+            }
+        case .priority:
+            return items.sorted { priorityRank(for: $0) < priorityRank(for: $1) }
+        case .titleAZ:
+            return items.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
         }
+    }
+
+    private func group(items: [Item], by mode: NotesSortMode) -> [ItemSection] {
+        guard !items.isEmpty else { return [] }
+        switch mode {
+        case .dateAdded:
+            return groupByAddedDate(items)
+        case .dueDate:
+            return groupByDueDate(items)
+        case .priority, .titleAZ:
+            return [ItemSection(id: "all", title: nil, trailingLabel: nil, items: items)]
+        }
+    }
+
+    private func groupByAddedDate(_ items: [Item]) -> [ItemSection] {
+        let cal = Calendar.current
+        let now = Date()
+        var buckets: [String: [Item]] = [:]
+        var order: [String] = []
+        func push(_ key: String, _ item: Item) {
+            if buckets[key] == nil { order.append(key); buckets[key] = [] }
+            buckets[key]!.append(item)
+        }
+
+        let startOfToday     = cal.startOfDay(for: now)
+        let startOfYesterday = cal.date(byAdding: .day, value: -1, to: startOfToday)!
+        let startOfThisWeek  = cal.dateInterval(of: .weekOfYear, for: now)?.start ?? startOfToday
+        let startOfThisMonth = cal.dateInterval(of: .month, for: now)?.start ?? startOfToday
+
+        for item in items {
+            let d = item.createdAt
+            if d >= startOfToday          { push("Today", item) }
+            else if d >= startOfYesterday { push("Yesterday", item) }
+            else if d >= startOfThisWeek  { push("This Week", item) }
+            else if d >= startOfThisMonth { push("This Month", item) }
+            else                          { push("Earlier", item) }
+        }
+        let preferred = ["Today", "Yesterday", "This Week", "This Month", "Earlier"]
+        let ordered = preferred.filter { order.contains($0) }
+        return ordered.map { key in
+            ItemSection(id: key, title: key, trailingLabel: nil, items: buckets[key] ?? [])
+        }
+    }
+
+    private func groupByDueDate(_ items: [Item]) -> [ItemSection] {
+        let cal = Calendar.current
+        let now = Date()
+        var buckets: [String: [Item]] = [:]
+        var order: [String] = []
+        func push(_ key: String, _ item: Item) {
+            if buckets[key] == nil { order.append(key); buckets[key] = [] }
+            buckets[key]!.append(item)
+        }
+
+        let startOfToday = cal.startOfDay(for: now)
+        let endOfToday   = cal.date(byAdding: .day, value: 1, to: startOfToday) ?? now
+        let endOfWeek    = cal.dateInterval(of: .weekOfYear, for: now)?.end ?? endOfToday
+
+        for item in items {
+            if item.completed {
+                push("Completed", item)
+            } else if let d = due(for: item) {
+                if d < startOfToday      { push("Overdue",   item) }
+                else if d < endOfToday   { push("Today",     item) }
+                else if d < endOfWeek    { push("This Week", item) }
+                else                     { push("Later",     item) }
+            } else {
+                push("No due date", item)
+            }
+        }
+
+        let preferred = ["Overdue", "Today", "This Week", "Later", "No due date", "Completed"]
+        let ordered = preferred.filter { order.contains($0) }
+        return ordered.map { key in
+            ItemSection(id: key, title: key, trailingLabel: nil, items: buckets[key] ?? [])
+        }
+    }
+
+    private func priorityRank(for item: Item) -> Int {
+        if case .text(let p) = item.properties["priority"] {
+            switch p.lowercased() {
+            case "high":   return 0
+            case "medium": return 1
+            case "low":    return 2
+            default:       return 3
+            }
+        }
+        return 3
+    }
+
+    private func due(for item: Item) -> Date? {
+        if case .date(let d) = item.properties["dueDate"] { return d }
+        return nil
     }
 }
 
-// MARK: - Type pill
+// MARK: - Sections & chips
 
-private struct TypePill: View {
-    let label: String
+struct ItemSection: Identifiable {
+    let id: String
+    let title: String?
+    let trailingLabel: String?
+    let items: [Item]
+}
+
+// MARK: - Filter evaluator
+
+/// Pure functions that turn a `NotesFilterState` into a matching `[Item]`
+/// using the existing Core filter engine plus a manual pass for due-date
+/// windows.
+enum NotesFilterEvaluator {
+    private static let engine = ItemFilterEngine()
+
+    static func apply(_ filters: NotesFilterState, to items: [Item]) -> [Item] {
+        let vf = viewFilters(for: filters)
+        var result = engine.apply(filters: vf, to: items)
+
+        switch filters.due {
+        case .any:
+            break
+        case .today:
+            let range = dayRange(containing: Date())
+            result = result.filter { due(for: $0).map { range.contains($0) } ?? false }
+        case .thisWeek:
+            let range = weekRange(containing: Date())
+            result = result.filter { due(for: $0).map { range.contains($0) } ?? false }
+        case .overdue:
+            let now = Date()
+            result = result.filter {
+                guard let d = due(for: $0) else { return false }
+                return d < now && !$0.completed
+            }
+        case .custom(let start, let end):
+            let range = start...end
+            result = result.filter { due(for: $0).map { range.contains($0) } ?? false }
+        }
+        return result
+    }
+
+    static func viewFilters(for f: NotesFilterState) -> ViewFilters {
+        ViewFilters(
+            tags: f.tags.isEmpty ? nil : Array(f.tags),
+            itemTypes: f.type.map { [$0] },
+            completed: {
+                switch f.status {
+                case .all:  return nil
+                case .open: return false
+                case .done: return true
+                }
+            }()
+        )
+    }
+
+    private static func due(for item: Item) -> Date? {
+        if case .date(let d) = item.properties["dueDate"] { return d }
+        return nil
+    }
+
+    private static func dayRange(containing date: Date) -> ClosedRange<Date> {
+        let cal = Calendar.current
+        let start = cal.startOfDay(for: date)
+        let end = cal.date(byAdding: .day, value: 1, to: start) ?? date
+        return start...end
+    }
+
+    private static func weekRange(containing date: Date) -> ClosedRange<Date> {
+        let cal = Calendar.current
+        guard let interval = cal.dateInterval(of: .weekOfYear, for: date) else {
+            return dayRange(containing: date)
+        }
+        return interval.start...interval.end
+    }
+}
+
+struct SavedViewChip: View {
     let icon: String
+    let label: String
+    let count: Int
     let isSelected: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label(label, systemImage: icon)
-                .font(.subheadline.weight(isSelected ? .semibold : .regular))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.10))
-                .foregroundStyle(isSelected ? .white : .primary)
-                .clipShape(Capsule())
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .medium))
+                Text(label)
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+                    .lineLimit(1)
+                Text("\(count)")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.85) : .secondary)
+            }
+            .foregroundStyle(isSelected ? .white : .primary)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 7)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(isSelected ? Color.accentColor : Color(.secondarySystemFill))
+            )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(label), \(count) items")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
-// MARK: - Tag chip
-
-private struct FilterTagChip: View {
-    let tag: String
-    let isSelected: Bool
-    let action: () -> Void
+struct FilterPill: View {
+    let label: String
+    let onDismiss: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Text("#\(tag)")
-                .font(.caption)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.12))
-                .foregroundStyle(isSelected ? Color.white : Color.secondary)
-                .clipShape(Capsule())
+        Button(action: onDismiss) {
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .opacity(0.6)
+            }
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(
+                Capsule().fill(Color.accentColor.opacity(0.10))
+            )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Remove filter \(label)")
     }
 }
