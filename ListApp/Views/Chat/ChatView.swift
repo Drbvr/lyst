@@ -142,6 +142,9 @@ private struct ChatConversationView: View {
                 .contentShape(Rectangle())
                 .onTapGesture {
                     isComposerFocused = false
+                    #if os(iOS)
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    #endif
                 }
 #if os(iOS)
                 .scrollDismissesKeyboard(.interactively)
@@ -254,6 +257,7 @@ private struct ChatConversationView: View {
                 Spacer()
                 Button("Done") {
                     isComposerFocused = false
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
             }
         }
@@ -275,6 +279,7 @@ private struct ChatConversationView: View {
     private var attachmentMenu: some View {
         Menu {
             Button {
+                isComposerFocused = false
                 isPhotoPickerPresented = true
             } label: {
                 Label("Add Photo", systemImage: "photo")

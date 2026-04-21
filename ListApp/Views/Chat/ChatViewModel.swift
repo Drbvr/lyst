@@ -344,9 +344,22 @@ final class ChatViewModel {
 
         case .draftsProposed(let drafts):
             let existing = messages[idx].draftBundle?.drafts ?? []
+            let augmented = drafts.map { draft -> NoteEdit in
+                var d = draft
+                if let listType = appState.listTypes.first(where: {
+                    $0.name.lowercased() == d.type.lowercased()
+                }) {
+                    for field in listType.fields {
+                        if d.properties[field.name] == nil {
+                            d.properties[field.name] = .text("")
+                        }
+                    }
+                }
+                return d
+            }
             messages[idx].draftBundle = DraftBundle(
                 id: messages[idx].draftBundle?.id ?? UUID(),
-                drafts: existing + drafts,
+                drafts: existing + augmented,
                 isSaved: false
             )
 
