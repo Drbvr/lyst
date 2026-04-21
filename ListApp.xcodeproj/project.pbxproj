@@ -70,6 +70,7 @@
 		CAFE0000000000000000B013 /* AppNoteCreator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F013 /* AppNoteCreator.swift */; };
 		CAFE0000000000000000B014 /* AttachmentProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F014 /* AttachmentProcessor.swift */; };
 		CAFE0000000000000000B015 /* DraftCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F015 /* DraftCard.swift */; };
+		CAFE0000000000000000B016 /* NotesFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F016 /* NotesFilterSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -161,6 +162,7 @@
 		CAFE0000000000000000F013 /* AppNoteCreator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNoteCreator.swift; sourceTree = "<group>"; };
 		CAFE0000000000000000F014 /* AttachmentProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentProcessor.swift; sourceTree = "<group>"; };
 		CAFE0000000000000000F015 /* DraftCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftCard.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F016 /* NotesFilterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesFilterSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -245,6 +247,7 @@
 				E8AE727A7993E82D1D7D7F89 /* ListTypeDetailView.swift */,
 				A16F4CC67D5A90B19BA77438 /* LLMSettingsView.swift */,
 				CAFE0000000000000000F012 /* NotesBrowserView.swift */,
+				CAFE0000000000000000F016 /* NotesFilterSheet.swift */,
 				9C6090889E5BD439B99D1145 /* SettingsView.swift */,
 			);
 			path = Views;
@@ -547,6 +550,7 @@
 				CAFE0000000000000000B010 /* ChatViewModel.swift in Sources */,
 				CAFE0000000000000000B011 /* CitationChip.swift in Sources */,
 				CAFE0000000000000000B012 /* NotesBrowserView.swift in Sources */,
+				CAFE0000000000000000B016 /* NotesFilterSheet.swift in Sources */,
 				CAFE0000000000000000B013 /* AppNoteCreator.swift in Sources */,
 				CAFE0000000000000000B014 /* AttachmentProcessor.swift in Sources */,
 				CAFE0000000000000000B015 /* DraftCard.swift in Sources */,
