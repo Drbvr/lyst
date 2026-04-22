@@ -56,9 +56,9 @@ public class FileScanner {
                     }
                 }
 
-            case .failure(let error):
-                // Return error for first folder that fails
-                return .failure(error)
+            case .failure:
+                // Skip folders that can't be scanned (consistent with per-file handling above)
+                continue
             }
         }
 

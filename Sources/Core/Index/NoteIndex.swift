@@ -135,6 +135,9 @@ public actor NoteIndex {
     public func upsertChunks(_ chunks: [NoteChunk], forFile path: String,
                               embedding: EmbeddingProvider) {
         guard let db else { return }
+        // Wrap all deletes + inserts in a transaction so the index is never
+        // left in a partially-updated state if an insert fails mid-loop.
+        exec(db, "BEGIN")
         // chunk_vectors has ON DELETE CASCADE on chunks.chunk_id, but cascade
         // requires foreign_keys=ON; delete vectors first explicitly to be safe.
         exec(db, "DELETE FROM chunk_vectors WHERE chunk_id IN (SELECT chunk_id FROM chunks WHERE file=?)", path)
@@ -168,6 +171,7 @@ public actor NoteIndex {
                 }
             }
         }
+        exec(db, "COMMIT")
     }
 
     // MARK: Search
@@ -275,8 +279,13 @@ public actor NoteIndex {
             bindings.append(folder)
         }
         for tag in tags {
-            conditions.append("(' ' || tags_flat || ' ') LIKE ?")
-            bindings.append("% \(tag) %")
+            // Escape LIKE special characters so tag values are matched literally.
+            let escapedTag = tag
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "%", with: "\\%")
+                .replacingOccurrences(of: "_", with: "\\_")
+            conditions.append("(' ' || tags_flat || ' ') LIKE ? ESCAPE '\\'")
+            bindings.append("% \(escapedTag) %")
         }
         if let after = updatedAfter {
             conditions.append("mtime >= ?")

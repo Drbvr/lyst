@@ -44,46 +44,42 @@ public class YAMLFrontmatterParser: FrontmatterParser {
 
     /// Parses YAML into a ListType definition
     public func parseListType(yaml: String) -> Result<ListType, ParseError> {
-        do {
-            guard let name = parseStringField(yaml, field: "name") else {
-                return .failure(.missingRequiredField("name"))
-            }
-
-            let fields = parseFieldDefinitions(yaml)
-            let prompt = parseStringField(yaml, field: "llmExtractionPrompt")
-
-            let listType = ListType(
-                name: name,
-                fields: fields,
-                llmExtractionPrompt: prompt
-            )
-
-            return .success(listType)
+        guard let name = parseStringField(yaml, field: "name") else {
+            return .failure(.missingRequiredField("name"))
         }
+
+        let fields = parseFieldDefinitions(yaml)
+        let prompt = parseStringField(yaml, field: "llmExtractionPrompt")
+
+        let listType = ListType(
+            name: name,
+            fields: fields,
+            llmExtractionPrompt: prompt
+        )
+
+        return .success(listType)
     }
 
     /// Parses YAML into a SavedView definition
     public func parseView(yaml: String) -> Result<SavedView, ParseError> {
-        do {
-            guard let name = parseStringField(yaml, field: "name") else {
-                return .failure(.missingRequiredField("name"))
-            }
-
-            let displayStyleStr = parseStringField(yaml, field: "display_style") ?? "list"
-            guard let displayStyle = DisplayStyle(rawValue: displayStyleStr) else {
-                return .failure(.invalidFieldType("display_style", expected: "list|card", got: displayStyleStr))
-            }
-
-            let filters = parseViewFilters(yaml)
-
-            let view = SavedView(
-                name: name,
-                filters: filters,
-                displayStyle: displayStyle
-            )
-
-            return .success(view)
+        guard let name = parseStringField(yaml, field: "name") else {
+            return .failure(.missingRequiredField("name"))
         }
+
+        let displayStyleStr = parseStringField(yaml, field: "display_style") ?? "list"
+        guard let displayStyle = DisplayStyle(rawValue: displayStyleStr) else {
+            return .failure(.invalidFieldType("display_style", expected: "list|card", got: displayStyleStr))
+        }
+
+        let filters = parseViewFilters(yaml)
+
+        let view = SavedView(
+            name: name,
+            filters: filters,
+            displayStyle: displayStyle
+        )
+
+        return .success(view)
     }
 
     /// Parses YAML into Item properties dictionary

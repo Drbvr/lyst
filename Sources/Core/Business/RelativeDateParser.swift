@@ -35,7 +35,7 @@ public struct RelativeDateParser {
 
         guard !numberString.isEmpty, !unitString.isEmpty else { return nil }
 
-        guard let number = Int(numberString), number > 0 else { return nil }
+        guard let number = Int(numberString), number >= 0 else { return nil }
 
         let calendar = Calendar.current
         let now = Date()
