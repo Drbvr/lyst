@@ -119,7 +119,8 @@ public actor ChatToolRunner {
             let priority = args["priority"] as? String
             let addTags = args["addTags"] as? [String]
             let completed = args["completed"] as? Bool
-            let r = runUpdateTodos(ids: ids, dueDate: dueDate, priority: priority, addTags: addTags, completed: completed)
+            let clearFields = args["clearFields"] as? [String]
+            let r = runUpdateTodos(ids: ids, dueDate: dueDate, priority: priority, addTags: addTags, completed: completed, clearFields: clearFields)
             return (r, [], [])
 
         case "break_down_task":
@@ -422,7 +423,7 @@ public actor ChatToolRunner {
         return json(["todos": Array(results), "count": results.count])
     }
 
-    private func runUpdateTodos(ids: [String], dueDate: String?, priority: String?, addTags: [String]?, completed: Bool?) -> String {
+    private func runUpdateTodos(ids: [String], dueDate: String?, priority: String?, addTags: [String]?, completed: Bool?, clearFields: [String]?) -> String {
         var updated: [String] = []
         for idStr in ids {
             if let uuid = UUID(uuidString: idStr),
@@ -436,6 +437,7 @@ public actor ChatToolRunner {
         if let priority = priority { changes["priority"] = priority }
         if let addTags = addTags { changes["addTags"] = addTags }
         if let completed = completed { changes["completed"] = completed }
+        if let clearFields = clearFields, !clearFields.isEmpty { changes["clearFields"] = clearFields }
 
         return json([
             "proposed_updates": true,
