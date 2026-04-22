@@ -35,11 +35,17 @@ struct ContentView: View {
                 }
                 .tag(0)
 
+            TodosHomeView()
+                .tabItem {
+                    Label("Todos", systemImage: "checkmark.circle")
+                }
+                .tag(1)
+
             NotesBrowserView()
                 .tabItem {
                     Label("Notes", systemImage: "square.stack")
                 }
-                .tag(1)
+                .tag(2)
 
             NavigationStack {
                 SettingsView()
@@ -47,7 +53,7 @@ struct ContentView: View {
             .tabItem {
                 Label("Settings", systemImage: "gear")
             }
-            .tag(2)
+            .tag(3)
         }
     }
 }
