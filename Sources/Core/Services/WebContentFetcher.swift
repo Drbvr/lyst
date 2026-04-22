@@ -20,6 +20,7 @@ public enum WebFetchError: LocalizedError {
 }
 
 /// Fetches a web page and returns its readable plain-text content.
+@available(macOS 12.0, *)
 public struct WebContentFetcher {
 
     /// Maximum number of characters to include in the prompt (keeps tokens manageable).
