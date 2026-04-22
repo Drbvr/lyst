@@ -7,6 +7,7 @@ struct BulkSelectBar: View {
     let allItems: [Item]
     let onDone: () -> Void
     @State private var showReschedule = false
+    @State private var rescheduleTo: Date?
 
     private var selected: [Item] { allItems.filter { selection.contains($0.id) } }
 
@@ -38,12 +39,62 @@ struct BulkSelectBar: View {
         )
         .padding(.horizontal, 16).padding(.bottom, 20)
         .sheet(isPresented: $showReschedule) {
-            if let first = selected.first {
-                // Simplified: reschedule applied to first selected item;
-                // the underlying sheet writes to md via AppState.updateItem.
-                RescheduleSheet(item: first)
+            NavigationStack {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        HStack(spacing: 8) {
+                            chip("Today")      { rescheduleTo = Calendar.current.startOfDay(for: .now) }
+                            chip("Tomorrow")   { rescheduleTo = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: .now))! }
+                            chip("Next week")  { rescheduleTo = Calendar.current.date(byAdding: .day, value: 7, to: Calendar.current.startOfDay(for: .now))! }
+                            chip("Someday")    { rescheduleTo = nil }
+                        }
+                        .padding(.horizontal, 16)
+
+                        DatePicker("Date & time", selection: Binding(
+                            get: { rescheduleTo ?? .now },
+                            set: { rescheduleTo = $0 }
+                        ))
+                        .datePickerStyle(.graphical)
+                        .padding(.horizontal, 16)
+
+                        Button {
+                            for item in selected {
+                                var updated = item
+                                if let date = rescheduleTo {
+                                    updated.properties["dueDate"] = .date(date)
+                                } else {
+                                    updated.properties.removeValue(forKey: "dueDate")
+                                }
+                                appState.updateItem(updated)
+                            }
+                            showReschedule = false
+                            finish()
+                        } label: {
+                            Text("Schedule")
+                                .font(.system(size: 16, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .foregroundStyle(.white)
+                                .background(RoundedRectangle(cornerRadius: 12).fill(TodoToken.blue))
+                        }.buttonStyle(.plain).padding(.horizontal, 16)
+                    }.padding(.vertical, 16)
+                }
+                .navigationTitle("Reschedule \(selected.count) todos").navigationBarTitleInline()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showReschedule = false } }
+                }
             }
         }
+    }
+
+    private func chip(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(Capsule().fill(TodoToken.fillS))
+                .foregroundStyle(TodoToken.fg)
+        }.buttonStyle(.plain)
     }
 
     private func bulkButton(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {

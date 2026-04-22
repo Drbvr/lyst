@@ -2,8 +2,6 @@ import XCTest
 @testable import Core
 
 final class QuickAddParserTests: XCTestCase {
-    private let cal = Calendar(identifier: .gregorian)
-
     // 2026-04-22 is a Wednesday
     private var now: Date {
         var c = DateComponents()

@@ -8,6 +8,11 @@ struct UpcomingScopeView: View {
     @State private var selection: Set<UUID> = []
 
     private var startOfWeek: Date { Calendar.current.startOfDay(for: Date()) }
+    private let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE d MMM"
+        return f
+    }()
 
     var body: some View {
         let week = TodoQueries.forWeek(items, startOfWeek: startOfWeek)
@@ -19,27 +24,28 @@ struct UpcomingScopeView: View {
             )
             .padding(.bottom, 14)
 
-            ForEach(0..<7, id: \.self) { i in
-                let day = Calendar.current.date(byAdding: .day, value: i, to: startOfWeek) ?? startOfWeek
-                let bucket = week[i]
-                if !bucket.isEmpty {
-                    TodoSectionHeader(title: label(for: day, index: i), trailing: "\(bucket.count)")
-                    TodoGroupCard {
-                        ForEach(Array(bucket.enumerated()), id: \.element.id) { idx, item in
-                            TodoRowSwipe(item: item, isBulkSelecting: false, selection: $selection)
-                            if idx < bucket.count - 1 { TodoRowDivider() }
-                        }
+            let day = Calendar.current.date(byAdding: .day, value: selectedDay, to: startOfWeek) ?? startOfWeek
+            let bucket = week[selectedDay]
+            if !bucket.isEmpty {
+                TodoSectionHeader(title: label(for: day, index: selectedDay), trailing: "\(bucket.count)")
+                TodoGroupCard {
+                    ForEach(Array(bucket.enumerated()), id: \.element.id) { idx, item in
+                        TodoRowSwipe(item: item, isBulkSelecting: false, selection: $selection)
+                        if idx < bucket.count - 1 { TodoRowDivider() }
                     }
                 }
+            } else {
+                Text("No todos scheduled for this day")
+                    .foregroundStyle(TodoToken.mute)
+                    .padding(20)
             }
         }
     }
 
     private func label(for date: Date, index: Int) -> String {
         let cal = Calendar.current
-        let f = DateFormatter(); f.dateFormat = "EEE d MMM"
-        if index == 0 { return "Today · \(f.string(from: date))" }
-        if cal.isDateInTomorrow(date) { return "Tomorrow · \(f.string(from: date))" }
-        return f.string(from: date)
+        if index == 0 { return "Today · \(dateFormatter.string(from: date))" }
+        if cal.isDateInTomorrow(date) { return "Tomorrow · \(dateFormatter.string(from: date))" }
+        return dateFormatter.string(from: date)
     }
 }

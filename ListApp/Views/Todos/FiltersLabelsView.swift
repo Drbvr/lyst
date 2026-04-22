@@ -98,7 +98,8 @@ struct FiltersLabelsView: View {
 
     private func labelColor(_ n: String) -> Color {
         let palette = [TodoToken.red, TodoToken.orange, TodoToken.blue, TodoToken.green, TodoToken.purple]
-        return palette[abs(n.hashValue) % palette.count]
+        let index = abs(n.unicodeScalars.reduce(0) { UInt32($0) &+ $1.value }) % UInt32(palette.count)
+        return palette[Int(index)]
     }
 }
 

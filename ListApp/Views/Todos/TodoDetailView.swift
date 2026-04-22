@@ -6,7 +6,6 @@ struct TodoDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let itemID: UUID
     @State private var showReschedule = false
-    @State private var showEdit = false
 
     private var item: Item? { appState.items.first { $0.id == itemID } }
 
@@ -113,7 +112,6 @@ struct TodoDetailView: View {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button("Reschedule…") { showReschedule = true }
-                    Button("Edit…")       { showEdit = true }
                     if let item = item {
                         Button(role: .destructive) {
                             appState.deleteItem(item); dismiss()
