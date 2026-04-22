@@ -5,7 +5,19 @@ struct FiltersLabelsView: View {
     @Environment(AppState.self) private var appState
     let items: [Item]
 
-    struct SmartFilter: Identifiable { let id = UUID(); let icon: String; let name: String; let predicate: (Item) -> Bool }
+    struct SmartFilter: Identifiable {
+        let id: String
+        let icon: String
+        let name: String
+        let predicate: (Item) -> Bool
+
+        init(icon: String, name: String, predicate: @escaping (Item) -> Bool) {
+            self.id = name
+            self.icon = icon
+            self.name = name
+            self.predicate = predicate
+        }
+    }
 
     private var filters: [SmartFilter] {
         [
@@ -21,7 +33,6 @@ struct FiltersLabelsView: View {
                 guard let d = TodoQueries.dueDate(item) else { return false }
                 return Calendar.current.isDateInToday(d)
             }),
-            .init(icon: "person.crop.circle", name: "Assigned to me", predicate: { _ in true }),
             .init(icon: "clock", name: "Scheduled", predicate: { TodoQueries.dueDate($0) != nil }),
         ]
     }

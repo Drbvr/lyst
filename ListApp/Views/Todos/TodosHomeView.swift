@@ -25,7 +25,11 @@ struct TodosHomeView: View {
                         QuickAddBar { title in
                             let result = QuickAddParser.parse(title)
                             Task {
-                                try? await createFromQuickAdd(result)
+                                do {
+                                    try await createFromQuickAdd(result)
+                                } catch {
+                                    appState.errorMessage = error.localizedDescription
+                                }
                             }
                         }
                         .padding(.horizontal, 16).padding(.bottom, 14)

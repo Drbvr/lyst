@@ -5,9 +5,20 @@ struct RescheduleSheet: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     let item: Item
-    @State private var date: Date = Date()
+    @State private var date: Date
 
     private let cal = Calendar.current
+
+    init(item: Item) {
+        self.item = item
+        let initialDate: Date
+        if case .date(let existingDate)? = item.properties["dueDate"] {
+            initialDate = existingDate
+        } else {
+            initialDate = Calendar.current.startOfDay(for: Date())
+        }
+        _date = State(initialValue: initialDate)
+    }
 
     var body: some View {
         NavigationStack {
