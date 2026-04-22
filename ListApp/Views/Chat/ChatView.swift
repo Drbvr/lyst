@@ -57,7 +57,7 @@ struct ChatView: View {
         let index = appState.noteIndex
         let coreFS = DefaultFileSystemManager()
         let creator = AppNoteCreator(appState: appState)
-        let runner = ChatToolRunner(index: index, fileSystem: coreFS)
+        let runner = ChatToolRunner(index: index, fileSystem: coreFS, todoItems: appState.items)
 
         let provider: any LLMProvider
         if settings.processingMode == .onDevice {

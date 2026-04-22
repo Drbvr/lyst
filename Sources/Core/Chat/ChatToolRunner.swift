@@ -19,16 +19,19 @@ public actor ChatToolRunner {
     private let fileSystem: FileSystemManager
     private let parser: ObsidianTodoParser
     private let webFetcher: WebContentFetcher
+    private let todoItems: [Item]
 
     public init(
         index: NoteIndex,
         fileSystem: FileSystemManager,
-        webFetcher: WebContentFetcher = WebContentFetcher()
+        webFetcher: WebContentFetcher = WebContentFetcher(),
+        todoItems: [Item] = []
     ) {
         self.index = index
         self.fileSystem = fileSystem
         self.parser = ObsidianTodoParser()
         self.webFetcher = webFetcher
+        self.todoItems = todoItems
     }
 
     // MARK: - Dispatch
@@ -98,6 +101,47 @@ public actor ChatToolRunner {
             }
             let (r, refs) = await runWebFetch(WebFetchArgs(url: url))
             return (r, refs, [])
+
+        case "query_todos":
+            let scope = args["scope"] as? String
+            let priority = args["priority"] as? String
+            let tag = args["tag"] as? String
+            let project = args["project"] as? String
+            let limit = args["limit"] as? Int
+            let r = runQueryTodos(scope: scope, priority: priority, tag: tag, project: project, limit: limit)
+            return (r, [], [])
+
+        case "update_todos":
+            guard let ids = args["ids"] as? [String] else {
+                return (errorJSON("missing_argument", "update_todos requires 'ids'"), [], [])
+            }
+            let dueDate = args["dueDate"] as? String
+            let priority = args["priority"] as? String
+            let addTags = args["addTags"] as? [String]
+            let completed = args["completed"] as? Bool
+            let r = runUpdateTodos(ids: ids, dueDate: dueDate, priority: priority, addTags: addTags, completed: completed)
+            return (r, [], [])
+
+        case "break_down_task":
+            guard let todoId = args["todo_id"] as? String,
+                  let subtasks = args["subtasks"] as? [String] else {
+                return (errorJSON("missing_argument", "break_down_task requires 'todo_id' and 'subtasks'"), [], [])
+            }
+            let r = runBreakDownTask(todoId: todoId, subtasks: subtasks)
+            return (r, [], [])
+
+        case "extract_todos_from_note":
+            guard let noteFile = args["note_file"] as? String else {
+                return (errorJSON("missing_argument", "extract_todos_from_note requires 'note_file'"), [], [])
+            }
+            let (r, drafts) = runExtractTodosFromNote(noteFile: noteFile)
+            return (r, [], drafts)
+
+        case "plan_my_day":
+            let date = args["date"] as? String
+            let start = args["start"] as? String
+            let r = await runPlanMyDay(date: date, start: start)
+            return (r, [], [])
 
         default:
             return (errorJSON("unknown_tool", "No tool named '\(name)'"), [], [])
@@ -298,7 +342,236 @@ public actor ChatToolRunner {
         return (truncated(json(["notes": items, "count": rows.count, "within_hours": hours])), refs)
     }
 
+    // MARK: - Todo tools
+
+    private func runQueryTodos(scope: String?, priority: String?, tag: String?, project: String?, limit: Int?) -> String {
+        var filtered = todoItems.filter { $0.type == "todo" }
+
+        // Scope filters
+        if let scope = scope {
+            let now = Date()
+            let calendar = Calendar.current
+            switch scope {
+            case "today":
+                let start = calendar.startOfDay(for: now)
+                let end = calendar.date(byAdding: .day, value: 1, to: start) ?? now
+                filtered = filtered.filter { item in
+                    if let dueStr = item.properties["dueDate"]?.stringValue,
+                       let due = Self.parseISO8601Date(dueStr) {
+                        return due >= start && due < end && !item.completed
+                    }
+                    return false
+                }
+            case "upcoming":
+                filtered = filtered.filter { item in
+                    if let dueStr = item.properties["dueDate"]?.stringValue,
+                       let due = Self.parseISO8601Date(dueStr) {
+                        return due >= now && !item.completed
+                    }
+                    return false
+                }
+            case "overdue":
+                filtered = filtered.filter { item in
+                    if let dueStr = item.properties["dueDate"]?.stringValue,
+                       let due = Self.parseISO8601Date(dueStr) {
+                        return due < now && !item.completed
+                    }
+                    return false
+                }
+            case "inbox":
+                // Inbox = items without a due date
+                filtered = filtered.filter { $0.properties["dueDate"] == nil }
+            case "all":
+                break
+            default:
+                break
+            }
+        }
+
+        // Priority filter
+        if let priority = priority {
+            filtered = filtered.filter { $0.properties["priority"]?.stringValue == priority }
+        }
+
+        // Tag filter (exact match)
+        if let tag = tag {
+            filtered = filtered.filter { $0.tags.contains(tag) }
+        }
+
+        // Project filter (top-level tag)
+        if let project = project {
+            filtered = filtered.filter { $0.tags.contains { $0.hasPrefix(project) } }
+        }
+
+        let maxLimit = min(limit ?? 20, 100)
+        let results = filtered.prefix(maxLimit).map { item -> [String: Any] in
+            var dict: [String: Any] = [
+                "id": item.id.uuidString,
+                "title": item.title,
+                "completed": item.completed,
+                "tags": item.tags
+            ]
+            if let dueStr = item.properties["dueDate"]?.stringValue {
+                dict["dueDate"] = dueStr
+            }
+            if let pri = item.properties["priority"]?.stringValue {
+                dict["priority"] = pri
+            }
+            return dict
+        }
+        return json(["todos": Array(results), "count": results.count])
+    }
+
+    private func runUpdateTodos(ids: [String], dueDate: String?, priority: String?, addTags: [String]?, completed: Bool?) -> String {
+        var updated: [String] = []
+        for idStr in ids {
+            if let uuid = UUID(uuidString: idStr),
+               let idx = todoItems.firstIndex(where: { $0.id == uuid }) {
+                updated.append(idStr)
+            }
+        }
+        // Return proposed update (actual mutations happen in AppState with user confirmation)
+        return json([
+            "proposed_updates": true,
+            "ids": updated,
+            "changes": [
+                "dueDate": dueDate ?? NSNull(),
+                "priority": priority ?? NSNull(),
+                "addTags": addTags ?? NSNull(),
+                "completed": completed ?? NSNull()
+            ],
+            "detail": "Proposed updates for \(updated.count) todos. User confirmation required."
+        ])
+    }
+
+    private func runBreakDownTask(todoId: String, subtasks: [String]) -> String {
+        if let uuid = UUID(uuidString: todoId),
+           let _ = todoItems.first(where: { $0.id == uuid }) {
+            return json([
+                "proposed": true,
+                "todo_id": todoId,
+                "subtasks": subtasks,
+                "detail": "Proposed \(subtasks.count) subtasks. User confirmation to append to todo required."
+            ])
+        }
+        return errorJSON("todo_not_found", "Could not find todo with id '\(todoId)'")
+    }
+
+    private func runExtractTodosFromNote(noteFile: String) -> (String, [NoteEdit]) {
+        guard case .success(let content) = fileSystem.readFile(at: noteFile) else {
+            return (errorJSON("note_not_found", "Could not read file: \(noteFile)"), [])
+        }
+
+        // Extract lines that look like todos: checkboxes, action verbs, bullet lists
+        var proposed: [NoteEdit] = []
+        let lines = content.components(separatedBy: .newlines)
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            // Check for markdown checkbox: - [ ] or - [x]
+            if trimmed.hasPrefix("- [ ]") || trimmed.hasPrefix("- [x]") {
+                let title = trimmed.dropFirst(6).trimmingCharacters(in: .whitespaces)
+                if !title.isEmpty {
+                    proposed.append(NoteEdit(
+                        type: "todo",
+                        title: String(title),
+                        properties: [:],
+                        tags: []
+                    ))
+                }
+            }
+        }
+
+        if proposed.isEmpty {
+            return (json(["extracted": false, "detail": "No todos found in note"]), [])
+        }
+
+        return (json([
+            "extracted": true,
+            "count": proposed.count,
+            "detail": "Extracted \(proposed.count) todo(s) from note. Review and save in draft cards."
+        ]), proposed)
+    }
+
+    private func runPlanMyDay(date: String?, start: String?) async -> String {
+        let targetDate: Date
+        if let dateStr = date {
+            targetDate = Self.parseISO8601Date(dateStr) ?? Date()
+        } else {
+            targetDate = Date()
+        }
+
+        let startTime: Date
+        if let startStr = start {
+            startTime = Self.parseISO8601Time(startStr) ?? Date()
+        } else {
+            let calendar = Calendar.current
+            var comps = calendar.dateComponents([.year, .month, .day], from: targetDate)
+            comps.hour = 9
+            comps.minute = 0
+            startTime = calendar.date(from: comps) ?? Date()
+        }
+
+        // Filter todos due today, sort by priority
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: targetDate)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? targetDate
+
+        var todayTodos = todoItems.filter { item in
+            if item.type != "todo" || item.completed { return false }
+            if let dueStr = item.properties["dueDate"]?.stringValue,
+               let due = Self.parseISO8601Date(dueStr) {
+                return due >= dayStart && due < dayEnd
+            }
+            return false
+        }
+
+        // Sort by priority (p1, p2, p3, p4)
+        let priorityOrder = ["p1": 0, "p2": 1, "p3": 2, "p4": 3]
+        todayTodos.sort { a, b in
+            let aPri = priorityOrder[a.properties["priority"]?.stringValue ?? "p4"] ?? 4
+            let bPri = priorityOrder[b.properties["priority"]?.stringValue ?? "p4"] ?? 4
+            return aPri < bPri
+        }
+
+        // Time-box: estimate 30 min per todo, adjust for priority
+        var slots: [[String: Any]] = []
+        var currentTime = startTime
+        let timeFormatter = DateFormatter()
+        timeFormatter.timeStyle = .short
+        timeFormatter.dateStyle = .none
+
+        for (idx, todo) in todayTodos.prefix(10).enumerated() {
+            let durationMins = todo.properties["priority"]?.stringValue == "p1" ? 45 : 30
+            let timeStr = timeFormatter.string(from: currentTime)
+            slots.append([
+                "startTime": timeStr,
+                "title": todo.title,
+                "todoId": todo.id.uuidString,
+                "durationMinutes": durationMins
+            ])
+            currentTime = calendar.date(byAdding: .minute, value: durationMins, to: currentTime) ?? currentTime
+        }
+
+        return json([
+            "date": calendar.dateComponents([.year, .month, .day], from: targetDate).formatted,
+            "slots": slots,
+            "count": slots.count
+        ])
+    }
+
     // MARK: - Helpers
+
+    private static func parseISO8601Date(_ str: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        return formatter.date(from: str)
+    }
+
+    private static func parseISO8601Time(_ str: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullTime, .withTimeZone]
+        return formatter.date(from: str)
+    }
 
     private func json(_ dict: [String: Any]) -> String {
         guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted]),
