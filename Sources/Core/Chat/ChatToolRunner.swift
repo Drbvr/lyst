@@ -356,25 +356,25 @@ public actor ChatToolRunner {
                 let start = calendar.startOfDay(for: now)
                 let end = calendar.date(byAdding: .day, value: 1, to: start) ?? now
                 filtered = filtered.filter { item in
-                    if let dueStr = item.properties["dueDate"]?.stringValue,
-                       let due = Self.parseISO8601Date(dueStr) {
-                        return due >= start && due < end && !item.completed
+                    if let due = Self.extractDateProperty(item.properties["dueDate"]),
+                       let parsed = Self.parseISO8601Date(due) {
+                        return parsed >= start && parsed < end && !item.completed
                     }
                     return false
                 }
             case "upcoming":
                 filtered = filtered.filter { item in
-                    if let dueStr = item.properties["dueDate"]?.stringValue,
-                       let due = Self.parseISO8601Date(dueStr) {
-                        return due >= now && !item.completed
+                    if let due = Self.extractDateProperty(item.properties["dueDate"]),
+                       let parsed = Self.parseISO8601Date(due) {
+                        return parsed >= now && !item.completed
                     }
                     return false
                 }
             case "overdue":
                 filtered = filtered.filter { item in
-                    if let dueStr = item.properties["dueDate"]?.stringValue,
-                       let due = Self.parseISO8601Date(dueStr) {
-                        return due < now && !item.completed
+                    if let due = Self.extractDateProperty(item.properties["dueDate"]),
+                       let parsed = Self.parseISO8601Date(due) {
+                        return parsed < now && !item.completed
                     }
                     return false
                 }
@@ -390,7 +390,7 @@ public actor ChatToolRunner {
 
         // Priority filter
         if let priority = priority {
-            filtered = filtered.filter { $0.properties["priority"]?.stringValue == priority }
+            filtered = filtered.filter { Self.extractTextProperty($0.properties["priority"]) == priority }
         }
 
         // Tag filter (exact match)
@@ -411,10 +411,10 @@ public actor ChatToolRunner {
                 "completed": item.completed,
                 "tags": item.tags
             ]
-            if let dueStr = item.properties["dueDate"]?.stringValue {
-                dict["dueDate"] = dueStr
+            if let due = Self.extractDateProperty(item.properties["dueDate"]) {
+                dict["dueDate"] = due
             }
-            if let pri = item.properties["priority"]?.stringValue {
+            if let pri = Self.extractTextProperty(item.properties["priority"]) {
                 dict["priority"] = pri
             }
             return dict
@@ -431,15 +431,16 @@ public actor ChatToolRunner {
             }
         }
         // Return proposed update (actual mutations happen in AppState with user confirmation)
+        var changes: [String: Any] = [:]
+        if let dueDate = dueDate { changes["dueDate"] = dueDate }
+        if let priority = priority { changes["priority"] = priority }
+        if let addTags = addTags { changes["addTags"] = addTags }
+        if let completed = completed { changes["completed"] = completed }
+
         return json([
             "proposed_updates": true,
             "ids": updated,
-            "changes": [
-                "dueDate": dueDate ?? NSNull(),
-                "priority": priority ?? NSNull(),
-                "addTags": addTags ?? NSNull(),
-                "completed": completed ?? NSNull()
-            ],
+            "changes": changes,
             "detail": "Proposed updates for \(updated.count) todos. User confirmation required."
         ])
     }
@@ -518,9 +519,9 @@ public actor ChatToolRunner {
 
         var todayTodos = todoItems.filter { item in
             if item.type != "todo" || item.completed { return false }
-            if let dueStr = item.properties["dueDate"]?.stringValue,
-               let due = Self.parseISO8601Date(dueStr) {
-                return due >= dayStart && due < dayEnd
+            if let due = Self.extractDateProperty(item.properties["dueDate"]),
+               let parsed = Self.parseISO8601Date(due) {
+                return parsed >= dayStart && parsed < dayEnd
             }
             return false
         }
@@ -528,8 +529,8 @@ public actor ChatToolRunner {
         // Sort by priority (p1, p2, p3, p4)
         let priorityOrder = ["p1": 0, "p2": 1, "p3": 2, "p4": 3]
         todayTodos.sort { a, b in
-            let aPri = priorityOrder[a.properties["priority"]?.stringValue ?? "p4"] ?? 4
-            let bPri = priorityOrder[b.properties["priority"]?.stringValue ?? "p4"] ?? 4
+            let aPri = priorityOrder[Self.extractTextProperty(a.properties["priority"]) ?? "p4"] ?? 4
+            let bPri = priorityOrder[Self.extractTextProperty(b.properties["priority"]) ?? "p4"] ?? 4
             return aPri < bPri
         }
 
@@ -541,7 +542,7 @@ public actor ChatToolRunner {
         timeFormatter.dateStyle = .none
 
         for (idx, todo) in todayTodos.prefix(10).enumerated() {
-            let durationMins = todo.properties["priority"]?.stringValue == "p1" ? 45 : 30
+            let durationMins = Self.extractTextProperty(todo.properties["priority"]) == "p1" ? 45 : 30
             let timeStr = timeFormatter.string(from: currentTime)
             slots.append([
                 "startTime": timeStr,
@@ -552,14 +553,35 @@ public actor ChatToolRunner {
             currentTime = calendar.date(byAdding: .minute, value: durationMins, to: currentTime) ?? currentTime
         }
 
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateStr = dateFormatter.string(from: targetDate)
+
         return json([
-            "date": calendar.dateComponents([.year, .month, .day], from: targetDate).formatted,
+            "date": dateStr,
             "slots": slots,
             "count": slots.count
         ])
     }
 
     // MARK: - Helpers
+
+    private static func extractTextProperty(_ value: PropertyValue?) -> String? {
+        guard let value = value else { return nil }
+        if case .text(let str) = value { return str }
+        return nil
+    }
+
+    private static func extractDateProperty(_ value: PropertyValue?) -> String? {
+        guard let value = value else { return nil }
+        if case .text(let str) = value { return str }
+        if case .date(let date) = value {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withFullDate]
+            return formatter.string(from: date)
+        }
+        return nil
+    }
 
     private static func parseISO8601Date(_ str: String) -> Date? {
         let formatter = ISO8601DateFormatter()
