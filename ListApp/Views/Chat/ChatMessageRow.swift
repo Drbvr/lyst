@@ -230,15 +230,94 @@ private struct ToolCallCard: View {
         .buttonStyle(.plain)
 
         if isExpanded, let result = call.resultJSON {
-            ScrollView {
-                Text(result)
-                    .font(.caption.monospaced())
-                    .padding(8)
+            Group {
+                switch call.name {
+                case "plan_my_day":
+                    planMyDayCardContent(result)
+                case "query_todos":
+                    queryTodosCardContent(result)
+                default:
+                    ScrollView {
+                        Text(result)
+                            .font(.caption.monospaced())
+                            .padding(8)
+                    }
+                    .frame(maxHeight: 200)
+                    .background(Color(.systemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.separator)))
+                }
             }
-            .frame(maxHeight: 200)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.separator)))
         }
+    }
+
+    @ViewBuilder
+    private func planMyDayCardContent(_ resultJSON: String) -> some View {
+        if let data = resultJSON.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let slots = json["slots"] as? [[String: Any]] {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Today's plan").font(.system(size: 13, weight: .semibold))
+                ForEach(Array(slots.enumerated()), id: \.offset) { _, slot in
+                    HStack {
+                        Text(slot["startTime"] as? String ?? "")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 50, alignment: .leading)
+                        Text(slot["title"] as? String ?? "")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                    }
+                    .padding(.vertical, 3)
+                }
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color(.tertiarySystemBackground)))
+        } else {
+            defaultResultView(resultJSON)
+        }
+    }
+
+    @ViewBuilder
+    private func queryTodosCardContent(_ resultJSON: String) -> some View {
+        if let data = resultJSON.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let todos = json["todos"] as? [[String: Any]] {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(todos.enumerated()), id: \.offset) { idx, todo in
+                    HStack(spacing: 10) {
+                        Image(systemName: "circle")
+                            .foregroundStyle(.secondary)
+                            .font(.system(size: 14))
+                        Text(todo["title"] as? String ?? "")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    if idx < todos.count - 1 {
+                        Divider().padding(.horizontal, 12)
+                    }
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color(.tertiarySystemBackground)))
+        } else {
+            defaultResultView(resultJSON)
+        }
+    }
+
+    @ViewBuilder
+    private func defaultResultView(_ resultJSON: String) -> some View {
+        ScrollView {
+            Text(resultJSON)
+                .font(.caption.monospaced())
+                .padding(8)
+        }
+        .frame(maxHeight: 200)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.separator)))
     }
 }

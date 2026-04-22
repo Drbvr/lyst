@@ -67,8 +67,90 @@ public enum ChatTools {
 
     public static let all: [LLMToolDefinition] = [
         listNotes, searchNotes, readNote, outlineNote, listRecentNotes,
-        proposeNote, webFetch
+        proposeNote, webFetch,
+        queryTodos, updateTodos, breakDownTask, extractTodosFromNote,
+        planMyDay,
     ]
+
+    public static let queryTodos = LLMToolDefinition(
+        name: "query_todos",
+        description: "Query the user's todos. Returns matching todos with title, dueDate, priority, tags, and id. Use for 'what's urgent this week', 'overdue', 'due today', tag-scoped queries.",
+        parametersJSON: """
+        {
+          "type": "object",
+          "properties": {
+            "scope":    { "type": "string", "enum": ["today","upcoming","inbox","overdue","all"], "description": "Preset scope" },
+            "priority": { "type": "string", "enum": ["p1","p2","p3","p4"] },
+            "tag":      { "type": "string", "description": "Filter by tag (exact)" },
+            "project":  { "type": "string", "description": "Filter by top-level tag (project)" },
+            "limit":    { "type": "integer", "description": "Max results (default 20)" }
+          },
+          "required": []
+        }
+        """
+    )
+
+    public static let updateTodos = LLMToolDefinition(
+        name: "update_todos",
+        description: "Bulk update todos by id — change dueDate, priority, add tags, or mark completed. Returns the updated ids. Destructive — the UI MUST confirm with the user before calling this.",
+        parametersJSON: """
+        {
+          "type": "object",
+          "properties": {
+            "ids":       { "type": "array", "items": { "type": "string" } },
+            "dueDate":   { "type": "string", "description": "ISO8601 date, or null to clear" },
+            "priority":  { "type": "string", "enum": ["p1","p2","p3","p4","clear"] },
+            "addTags":   { "type": "array", "items": { "type": "string" } },
+            "completed": { "type": "boolean" }
+          },
+          "required": ["ids"]
+        }
+        """
+    )
+
+    public static let breakDownTask = LLMToolDefinition(
+        name: "break_down_task",
+        description: "Decompose a large task into 3-7 concrete subtasks and propose them to the user for review. The model generates subtask titles; the runner appends them to the parent todo as nested checkboxes on save.",
+        parametersJSON: """
+        {
+          "type": "object",
+          "properties": {
+            "todo_id":   { "type": "string" },
+            "subtasks":  { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["todo_id","subtasks"]
+        }
+        """
+    )
+
+    public static let extractTodosFromNote = LLMToolDefinition(
+        name: "extract_todos_from_note",
+        description: "Read a note and propose todos extracted from its body (checkboxes, action verbs, bullet lists that look actionable). User confirms before any write.",
+        parametersJSON: """
+        {
+          "type": "object",
+          "properties": {
+            "note_file": { "type": "string" }
+          },
+          "required": ["note_file"]
+        }
+        """
+    )
+
+    public static let planMyDay = LLMToolDefinition(
+        name: "plan_my_day",
+        description: "Build a time-boxed morning briefing for the user — groups today's todos into a suggested agenda by priority and deadlines. Returns an array of { startTime, title, todoId }.",
+        parametersJSON: """
+        {
+          "type": "object",
+          "properties": {
+            "date":  { "type": "string", "description": "ISO8601 date (default today)" },
+            "start": { "type": "string", "description": "ISO8601 time to start the day (default 09:00)" }
+          },
+          "required": []
+        }
+        """
+    )
 
     public static let searchNotes = LLMToolDefinition(
         name: "search_notes",

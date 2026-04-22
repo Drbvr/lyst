@@ -71,6 +71,33 @@
 		CAFE0000000000000000B014 /* AttachmentProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F014 /* AttachmentProcessor.swift */; };
 		CAFE0000000000000000B015 /* DraftCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F015 /* DraftCard.swift */; };
 		CAFE0000000000000000B016 /* NotesFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F016 /* NotesFilterSheet.swift */; };
+		CAFE0000000000000000B020 /* TodosHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F020 /* TodosHomeView.swift */; };
+		CAFE0000000000000000B021 /* BulkSelectBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F021 /* BulkSelectBar.swift */; };
+		CAFE0000000000000000B022 /* UpcomingScopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F022 /* UpcomingScopeView.swift */; };
+		CAFE0000000000000000B023 /* ProjectDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F023 /* ProjectDetailView.swift */; };
+		CAFE0000000000000000B024 /* CompletedArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F024 /* CompletedArchiveView.swift */; };
+		CAFE0000000000000000B025 /* TodoQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F025 /* TodoQueries.swift */; };
+		CAFE0000000000000000B026 /* InboxScopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F026 /* InboxScopeView.swift */; };
+		CAFE0000000000000000B027 /* ProjectsScopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F027 /* ProjectsScopeView.swift */; };
+		CAFE0000000000000000B028 /* FiltersLabelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F028 /* FiltersLabelsView.swift */; };
+		CAFE0000000000000000B029 /* TodoDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F029 /* TodoDetailView.swift */; };
+		CAFE0000000000000000B02A /* TodoRowSwipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F02A /* TodoRowSwipe.swift */; };
+		CAFE0000000000000000B02B /* RescheduleSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F02B /* RescheduleSheet.swift */; };
+		CAFE0000000000000000B02C /* TodayScopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F02C /* TodayScopeView.swift */; };
+		CAFE0000000000000000B02D /* TodoCreateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F02D /* TodoCreateSheet.swift */; };
+		CAFE0000000000000000B02E /* TodoScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F02E /* TodoScope.swift */; };
+		CAFE0000000000000000B02F /* QuickAddBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F02F /* QuickAddBar.swift */; };
+		CAFE0000000000000000B030 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F030 /* DesignTokens.swift */; };
+		CAFE0000000000000000B031 /* CheckCircle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F031 /* CheckCircle.swift */; };
+		CAFE0000000000000000B032 /* TodoPriority.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F032 /* TodoPriority.swift */; };
+		CAFE0000000000000000B033 /* Segmented.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F033 /* Segmented.swift */; };
+		CAFE0000000000000000B034 /* TodoRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F034 /* TodoRowView.swift */; };
+		CAFE0000000000000000B035 /* WeekStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F035 /* WeekStripView.swift */; };
+		CAFE0000000000000000B036 /* TodoGroupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F036 /* TodoGroupCard.swift */; };
+		CAFE0000000000000000B037 /* InlineTodoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F037 /* InlineTodoCard.swift */; };
+		CAFE0000000000000000B038 /* MentionPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F038 /* MentionPicker.swift */; };
+		CAFE0000000000000000B039 /* SlashCommandPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F039 /* SlashCommandPalette.swift */; };
+		CAFE0000000000000000B03A /* QuickAddParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE0000000000000000F03A /* QuickAddParser.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -163,6 +190,33 @@
 		CAFE0000000000000000F014 /* AttachmentProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentProcessor.swift; sourceTree = "<group>"; };
 		CAFE0000000000000000F015 /* DraftCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftCard.swift; sourceTree = "<group>"; };
 		CAFE0000000000000000F016 /* NotesFilterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesFilterSheet.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F020 /* TodosHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodosHomeView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F021 /* BulkSelectBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulkSelectBar.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F022 /* UpcomingScopeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpcomingScopeView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F023 /* ProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectDetailView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F024 /* CompletedArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedArchiveView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F025 /* TodoQueries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoQueries.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F026 /* InboxScopeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxScopeView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F027 /* ProjectsScopeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsScopeView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F028 /* FiltersLabelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FiltersLabelsView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F029 /* TodoDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoDetailView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F02A /* TodoRowSwipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoRowSwipe.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F02B /* RescheduleSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RescheduleSheet.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F02C /* TodayScopeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayScopeView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F02D /* TodoCreateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoCreateSheet.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F02E /* TodoScope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoScope.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F02F /* QuickAddBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddBar.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F030 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F031 /* CheckCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckCircle.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F032 /* TodoPriority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoPriority.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F033 /* Segmented.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Segmented.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F034 /* TodoRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoRowView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F035 /* WeekStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekStripView.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F036 /* TodoGroupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoGroupCard.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F037 /* InlineTodoCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineTodoCard.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F038 /* MentionPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentionPicker.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F039 /* SlashCommandPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandPalette.swift; sourceTree = "<group>"; };
+		CAFE0000000000000000F03A /* QuickAddParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -249,6 +303,7 @@
 				CAFE0000000000000000F012 /* NotesBrowserView.swift */,
 				CAFE0000000000000000F016 /* NotesFilterSheet.swift */,
 				9C6090889E5BD439B99D1145 /* SettingsView.swift */,
+				CAFE0000000000000000C004 /* Todos */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -318,6 +373,7 @@
 			isa = PBXGroup;
 			children = (
 				8538CAF531748EA646484D9A /* MarkdownParser.swift */,
+				CAFE0000000000000000F03A /* QuickAddParser.swift */,
 				77DFEFB07011F2A98AAF8924 /* YAMLParser.swift */,
 			);
 			path = Parsers;
@@ -396,8 +452,57 @@
 				CAFE0000000000000000F00E /* ChatView.swift */,
 				CAFE0000000000000000F011 /* CitationChip.swift */,
 				CAFE0000000000000000F015 /* DraftCard.swift */,
+				CAFE0000000000000000C006 /* TodoCards */,
 			);
 			path = Chat;
+			sourceTree = "<group>";
+		};
+		CAFE0000000000000000C004 /* Todos */ = {
+			isa = PBXGroup;
+			children = (
+				CAFE0000000000000000F030 /* DesignTokens.swift */,
+				CAFE0000000000000000F02E /* TodoScope.swift */,
+				CAFE0000000000000000F025 /* TodoQueries.swift */,
+				CAFE0000000000000000F020 /* TodosHomeView.swift */,
+				CAFE0000000000000000F02C /* TodayScopeView.swift */,
+				CAFE0000000000000000F022 /* UpcomingScopeView.swift */,
+				CAFE0000000000000000F026 /* InboxScopeView.swift */,
+				CAFE0000000000000000F027 /* ProjectsScopeView.swift */,
+				CAFE0000000000000000F023 /* ProjectDetailView.swift */,
+				CAFE0000000000000000F028 /* FiltersLabelsView.swift */,
+				CAFE0000000000000000F024 /* CompletedArchiveView.swift */,
+				CAFE0000000000000000F02F /* QuickAddBar.swift */,
+				CAFE0000000000000000F02D /* TodoCreateSheet.swift */,
+				CAFE0000000000000000F029 /* TodoDetailView.swift */,
+				CAFE0000000000000000F02B /* RescheduleSheet.swift */,
+				CAFE0000000000000000F02A /* TodoRowSwipe.swift */,
+				CAFE0000000000000000F021 /* BulkSelectBar.swift */,
+				CAFE0000000000000000C005 /* Components */,
+			);
+			path = Todos;
+			sourceTree = "<group>";
+		};
+		CAFE0000000000000000C005 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				CAFE0000000000000000F031 /* CheckCircle.swift */,
+				CAFE0000000000000000F032 /* TodoPriority.swift */,
+				CAFE0000000000000000F033 /* Segmented.swift */,
+				CAFE0000000000000000F034 /* TodoRowView.swift */,
+				CAFE0000000000000000F035 /* WeekStripView.swift */,
+				CAFE0000000000000000F036 /* TodoGroupCard.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		CAFE0000000000000000C006 /* TodoCards */ = {
+			isa = PBXGroup;
+			children = (
+				CAFE0000000000000000F037 /* InlineTodoCard.swift */,
+				CAFE0000000000000000F038 /* MentionPicker.swift */,
+				CAFE0000000000000000F039 /* SlashCommandPalette.swift */,
+			);
+			path = TodoCards;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -525,6 +630,7 @@
 				CAFE0000000000000000B00B /* ChatTools.swift in Sources */,
 				CAFE0000000000000000B00C /* ChatToolRunner.swift in Sources */,
 				CAFE0000000000000000B00D /* ChatPromptBuilder.swift in Sources */,
+				CAFE0000000000000000B03A /* QuickAddParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -554,6 +660,32 @@
 				CAFE0000000000000000B013 /* AppNoteCreator.swift in Sources */,
 				CAFE0000000000000000B014 /* AttachmentProcessor.swift in Sources */,
 				CAFE0000000000000000B015 /* DraftCard.swift in Sources */,
+				CAFE0000000000000000B020 /* TodosHomeView.swift in Sources */,
+				CAFE0000000000000000B021 /* BulkSelectBar.swift in Sources */,
+				CAFE0000000000000000B022 /* UpcomingScopeView.swift in Sources */,
+				CAFE0000000000000000B023 /* ProjectDetailView.swift in Sources */,
+				CAFE0000000000000000B024 /* CompletedArchiveView.swift in Sources */,
+				CAFE0000000000000000B025 /* TodoQueries.swift in Sources */,
+				CAFE0000000000000000B026 /* InboxScopeView.swift in Sources */,
+				CAFE0000000000000000B027 /* ProjectsScopeView.swift in Sources */,
+				CAFE0000000000000000B028 /* FiltersLabelsView.swift in Sources */,
+				CAFE0000000000000000B029 /* TodoDetailView.swift in Sources */,
+				CAFE0000000000000000B02A /* TodoRowSwipe.swift in Sources */,
+				CAFE0000000000000000B02B /* RescheduleSheet.swift in Sources */,
+				CAFE0000000000000000B02C /* TodayScopeView.swift in Sources */,
+				CAFE0000000000000000B02D /* TodoCreateSheet.swift in Sources */,
+				CAFE0000000000000000B02E /* TodoScope.swift in Sources */,
+				CAFE0000000000000000B02F /* QuickAddBar.swift in Sources */,
+				CAFE0000000000000000B030 /* DesignTokens.swift in Sources */,
+				CAFE0000000000000000B031 /* CheckCircle.swift in Sources */,
+				CAFE0000000000000000B032 /* TodoPriority.swift in Sources */,
+				CAFE0000000000000000B033 /* Segmented.swift in Sources */,
+				CAFE0000000000000000B034 /* TodoRowView.swift in Sources */,
+				CAFE0000000000000000B035 /* WeekStripView.swift in Sources */,
+				CAFE0000000000000000B036 /* TodoGroupCard.swift in Sources */,
+				CAFE0000000000000000B037 /* InlineTodoCard.swift in Sources */,
+				CAFE0000000000000000B038 /* MentionPicker.swift in Sources */,
+				CAFE0000000000000000B039 /* SlashCommandPalette.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

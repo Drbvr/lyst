@@ -45,7 +45,7 @@ public struct ToolCallRecord: Sendable, Codable, Identifiable {
 
 /// Names of tools that require user approval before execution.
 public enum GatedChatTools {
-    public static let names: Set<String> = ["web_fetch"]
+    public static let names: Set<String> = ["web_fetch", "update_todos", "break_down_task"]
 
     public static func requiresApproval(_ name: String) -> Bool {
         names.contains(name)
