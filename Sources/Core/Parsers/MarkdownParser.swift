@@ -259,7 +259,7 @@ public class ObsidianTodoParser: MarkdownParser {
         if let rawTags = tagsRaw {
             let stripped = rawTags.trimmingCharacters(in: CharacterSet(charactersIn: "[] "))
             tags = stripped.components(separatedBy: ",").map {
-                $0.trimmingCharacters(in: .whitespaces)
+                $0.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'")))
             }.filter { !$0.isEmpty }
         }
 

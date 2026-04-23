@@ -10,10 +10,19 @@ private struct ItemListViewDestination: Hashable {
 
 struct ListTypeDetailView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.dismiss) private var dismiss
     let listType: ListType
+    @State private var fields: [EditableField]
+    @State private var extractionPrompt: String
+
+    init(listType: ListType) {
+        self.listType = listType
+        _fields = State(initialValue: listType.fields.map { EditableField(name: $0.name, type: $0.type, required: $0.required) })
+        _extractionPrompt = State(initialValue: listType.llmExtractionPrompt ?? "")
+    }
 
     var body: some View {
-        let items = appState.items.filter { $0.type == listType.name }
+        let items = appState.items.filter { $0.type.lowercased() == listType.name.lowercased() }
 
         List {
             Section {
@@ -34,41 +43,35 @@ struct ListTypeDetailView: View {
             }
 
             Section("Fields") {
-                if listType.fields.isEmpty {
+                if fields.isEmpty {
                     Text("No fields defined")
                         .foregroundStyle(.secondary)
                         .italic()
                 } else {
-                    ForEach(listType.fields, id: \.name) { field in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(field.name.capitalized)
-                                    .font(.body)
-                                Text(field.type.rawValue.capitalized)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                    ForEach($fields) { $field in
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Field name", text: $field.name)
+                            Picker("Type", selection: $field.type) {
+                                Text("Text").tag(FieldType.text)
+                                Text("Number").tag(FieldType.number)
+                                Text("Date").tag(FieldType.date)
                             }
-                            Spacer()
-                            if field.required {
-                                Text("Required")
-                                    .font(.caption)
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.orange)
-                                    .clipShape(Capsule())
-                            }
+                            .pickerStyle(.segmented)
+                            Toggle("Required", isOn: $field.required)
                         }
                     }
+                    .onDelete { fields.remove(atOffsets: $0) }
+                }
+                Button {
+                    fields.append(EditableField(name: "", type: .text, required: false))
+                } label: {
+                    Label("Add field", systemImage: "plus")
                 }
             }
 
-            if let prompt = listType.llmExtractionPrompt {
-                Section("AI Extraction Prompt") {
-                    Text(prompt)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            Section("AI Extraction Prompt") {
+                TextEditor(text: $extractionPrompt)
+                    .frame(minHeight: 120)
             }
 
             if !items.isEmpty {
@@ -100,14 +103,43 @@ struct ListTypeDetailView: View {
             }
         }
         .navigationTitle(listType.name.capitalized)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Save") { save() }
+            }
+        }
+    }
+
+    private func save() {
+        let cleanedFields = fields
+            .map { $0.asFieldDefinition }
+            .filter { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        let updated = ListType(
+            name: listType.name,
+            fields: cleanedFields,
+            llmExtractionPrompt: extractionPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : extractionPrompt
+        )
+        appState.upsertListType(updated)
+        dismiss()
     }
 
     private func iconForType(_ type: String) -> String {
-        switch type {
+        switch type.lowercased() {
         case "movie": return "film"
         case "book": return "book.closed"
         case "todo": return "checkmark.circle"
         default: return "doc.text"
         }
+    }
+}
+
+private struct EditableField: Identifiable {
+    var id = UUID()
+    var name: String
+    var type: FieldType
+    var required: Bool
+
+    var asFieldDefinition: FieldDefinition {
+        FieldDefinition(name: name.trimmingCharacters(in: .whitespacesAndNewlines), type: type, required: required)
     }
 }

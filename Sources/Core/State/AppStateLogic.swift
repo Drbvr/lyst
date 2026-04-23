@@ -147,7 +147,16 @@ public enum AppStateLogic {
             return false
         }
         let taskText = String(line[taskRange])
-        return stripTaskMetadata(taskText) == itemTitle
+        return stripTaskMetadata(taskText) == normalizedCheckboxMatchTitle(itemTitle)
+    }
+
+    /// Checkbox lines are single-line; parser titles can include additional
+    /// continuation lines for multiline todos. Match against the first line.
+    private static func normalizedCheckboxMatchTitle(_ title: String) -> String {
+        title
+            .components(separatedBy: .newlines)
+            .first?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? title
     }
 
     /// Remove the same Obsidian task metadata the todo parser removes:
@@ -182,6 +191,48 @@ public enum AppStateLogic {
                 lines[i].replaceSubrange(r, with: "[ ]")
                 return lines.joined(separator: "\n")
             }
+        }
+        return nil
+    }
+
+    /// Rewrite the first checkbox line matching `originalTitle` with the latest
+    /// values from `item` (completed marker, title, due date, priority, tags).
+    public static func updateCheckbox(in content: String, matching originalTitle: String, with item: Item) -> String? {
+        var lines = content.components(separatedBy: "\n")
+        for i in lines.indices {
+            guard isCheckboxLine(lines[i], forTitle: originalTitle) else { continue }
+            let line = lines[i]
+            let pattern = "^(\\s*[-*]\\s+)"
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+                  let prefixRange = Range(match.range(at: 1), in: line) else {
+                return nil
+            }
+            let prefix = String(line[prefixRange])
+            let checkbox = item.completed ? "[x]" : "[ ]"
+            var rebuilt = "\(prefix)\(checkbox) \(normalizedCheckboxMatchTitle(item.title))"
+
+            if case .text(let p) = item.properties["priority"] {
+                let emoji: String
+                switch p {
+                case "high", "p1": emoji = "⏫"
+                case "medium", "p2": emoji = "🔼"
+                case "low", "p3", "p4": emoji = "🔽"
+                default: emoji = ""
+                }
+                if !emoji.isEmpty { rebuilt += " \(emoji)" }
+            }
+            if case .date(let d) = item.properties["dueDate"] {
+                let fmt = ISO8601DateFormatter()
+                fmt.formatOptions = [.withFullDate]
+                rebuilt += " 📅 \(fmt.string(from: d))"
+            }
+            for tag in item.tags {
+                rebuilt += " #\(tag)"
+            }
+
+            lines[i] = rebuilt
+            return lines.joined(separator: "\n")
         }
         return nil
     }
@@ -235,45 +286,40 @@ public enum AppStateLogic {
     /// Update title / tags / completed in the frontmatter block. Returns the
     /// updated content, or nil if the frontmatter is malformed.
     public static func updateYAMLItem(in content: String, item: Item) -> String? {
-        var lines = content.components(separatedBy: "\n")
+        let lines = content.components(separatedBy: "\n")
         guard let range = frontmatterRange(lines) else { return nil }
-        var end = range.upperBound
 
-        func replaceOrInsert(prefix: String, line: String) {
-            for i in range.lowerBound..<end {
-                if lines[i].trimmingCharacters(in: .whitespaces).hasPrefix(prefix) {
-                    lines[i] = line
-                    return
-                }
-            }
-            lines.insert(line, at: end)
-            end += 1
-        }
-
-        replaceOrInsert(prefix: "title:", line: "title: \(yamlQuote(item.title))")
-
-        let tagLine: String
+        var frontmatter: [String] = ["---"]
+        frontmatter.append("type: \(yamlQuote(item.type))")
+        frontmatter.append("title: \(yamlQuote(item.title))")
         if item.tags.isEmpty {
-            tagLine = "tags: []"
+            frontmatter.append("tags: []")
         } else {
-            tagLine = "tags: [\(item.tags.map { yamlQuote($0) }.joined(separator: ", "))]"
+            frontmatter.append("tags: [\(item.tags.map { yamlQuote($0) }.joined(separator: ", "))]")
         }
-        // Only insert `tags:` if it exists or item has tags; skip insertion when empty & absent
-        var tagsFound = false
-        for i in range.lowerBound..<end {
-            if lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("tags:") {
-                lines[i] = tagLine
-                tagsFound = true
-                break
+        frontmatter.append("completed: \(item.completed)")
+
+        let isoFull = ISO8601DateFormatter()
+        isoFull.formatOptions = [.withFullDate]
+        for (key, value) in item.properties.sorted(by: { $0.key < $1.key }) {
+            if key == "type" || key == "title" || key == "tags" || key == "completed" { continue }
+            switch value {
+            case .text(let t):
+                frontmatter.append("\(key): \(yamlQuote(t))")
+            case .number(let n):
+                frontmatter.append(n.truncatingRemainder(dividingBy: 1) == 0
+                                   ? "\(key): \(Int(n))"
+                                   : "\(key): \(n)")
+            case .date(let d):
+                frontmatter.append("\(key): \(isoFull.string(from: d))")
+            case .bool(let b):
+                frontmatter.append("\(key): \(b)")
             }
         }
-        if !tagsFound && !item.tags.isEmpty {
-            lines.insert(tagLine, at: end)
-            end += 1
-        }
+        frontmatter.append("---")
 
-        replaceOrInsert(prefix: "completed:", line: "completed: \(item.completed)")
-
-        return lines.joined(separator: "\n")
+        let bodyStart = range.upperBound + 1 // skip closing ---
+        let body = bodyStart < lines.count ? Array(lines[bodyStart...]) : []
+        return (frontmatter + body).joined(separator: "\n")
     }
 }

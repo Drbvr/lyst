@@ -129,6 +129,14 @@ struct NotesBrowserView: View {
 
     private var hasActiveFilters: Bool { !activeFilter.isDefault }
 
+    private var preferredColorScheme: ColorScheme? {
+        switch appState.selectedTheme {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -173,6 +181,7 @@ struct NotesBrowserView: View {
                 ItemDetailView(item: item)
             }
         }
+        .preferredColorScheme(preferredColorScheme)
     }
 
     // MARK: - Toolbar
@@ -607,6 +616,7 @@ struct NotesBrowserView: View {
 
     private func due(for item: Item) -> Date? {
         if case .date(let d) = item.properties["dueDate"] { return d }
+        if case .date(let d) = item.properties["deadline"] { return d }
         return nil
     }
 }
@@ -670,6 +680,7 @@ enum NotesFilterEvaluator {
 
     private static func due(for item: Item) -> Date? {
         if case .date(let d) = item.properties["dueDate"] { return d }
+        if case .date(let d) = item.properties["deadline"] { return d }
         return nil
     }
 

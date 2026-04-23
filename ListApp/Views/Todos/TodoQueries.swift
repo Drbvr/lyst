@@ -9,6 +9,7 @@ enum TodoQueries {
 
     static func dueDate(_ item: Item) -> Date? {
         if case .date(let d) = item.properties["dueDate"] { return d }
+        if case .date(let d) = item.properties["deadline"] { return d }
         return nil
     }
 

@@ -37,7 +37,9 @@ enum AppStateCreateError: LocalizedError {
 class AppState {
     var items: [Item]
     var savedViews: [SavedView]
-    var listTypes: [ListType] = MockData.listTypes
+    var listTypes: [ListType] {
+        didSet { persistListTypes() }
+    }
     var isLoadingItems: Bool = false
     var currentVaultURL: URL? = nil
     var errorMessage: String? = nil
@@ -73,9 +75,11 @@ class AppState {
         // Initialize with mock data immediately to avoid blocking UI
         self.items = MockData.allItems
         self.savedViews = Self.loadPersistedSavedViews() ?? MockData.savedViews
+        self.listTypes = Self.loadPersistedListTypes() ?? MockData.listTypes
         self.selectedTheme = UserDefaults.standard.string(forKey: "selectedTheme") ?? "system"
         self.vaultDisplayName = UserDefaults.standard.string(forKey: "vaultDisplayName") ?? "ListAppVault"
         self.llmSettings = LLMSettings.load()
+        ensureListTypesCoverLoadedItems()
 
         // Load vault items first so currentVaultURL is set before the index
         // is built on top of it — otherwise the cold-start index is empty.
@@ -151,6 +155,7 @@ class AppState {
             return
         }
         self.items = loadedItems
+        ensureListTypesCoverLoadedItems()
     }
 
     /// Load items from vault asynchronously to avoid blocking UI thread
@@ -170,6 +175,7 @@ class AppState {
                 if let loadedItems = loadedItems, !loadedItems.isEmpty {
                     currentVaultURL = url
                     self.items = loadedItems
+                    ensureListTypesCoverLoadedItems()
                     return
                 }
             }
@@ -188,6 +194,7 @@ class AppState {
         if let loadedItems = loadedItems {
             currentVaultURL = vaultURL
             self.items = loadedItems
+            ensureListTypesCoverLoadedItems()
         }
     }
 
@@ -308,7 +315,7 @@ class AppState {
         items[index] = updated
 
         Task { @MainActor in
-            let ok = await fileSystemManager.writeItem(updated)
+            let ok = await fileSystemManager.writeItem(updated, originalTitle: original.title)
             if !ok {
                 if let idx = self.items.firstIndex(where: { $0.id == original.id }) {
                     self.items[idx] = original
@@ -432,5 +439,45 @@ class AppState {
               let views = try? JSONDecoder().decode([SavedView].self, from: data)
         else { return nil }
         return views
+    }
+
+    private func persistListTypes() {
+        if let data = try? JSONEncoder().encode(listTypes) {
+            UserDefaults.standard.set(data, forKey: "listTypes")
+        }
+    }
+
+    private static func loadPersistedListTypes() -> [ListType]? {
+        guard let data = UserDefaults.standard.data(forKey: "listTypes"),
+              let types = try? JSONDecoder().decode([ListType].self, from: data)
+        else { return nil }
+        return types
+    }
+
+    private func ensureListTypesCoverLoadedItems() {
+        var byName: [String: ListType] = [:]
+        for lt in listTypes {
+            byName[lt.name.lowercased()] = lt
+        }
+        for typeName in itemTypeNames {
+            if byName[typeName.lowercased()] == nil {
+                let generated = ListType(name: typeName.capitalized)
+                byName[typeName.lowercased()] = generated
+            }
+        }
+        let merged = byName.values.sorted { $0.name.lowercased() < $1.name.lowercased() }
+        if merged != listTypes {
+            listTypes = merged
+        }
+    }
+
+    func upsertListType(_ listType: ListType) {
+        let key = listType.name.lowercased()
+        if let index = listTypes.firstIndex(where: { $0.name.lowercased() == key }) {
+            listTypes[index] = listType
+        } else {
+            listTypes.append(listType)
+            listTypes.sort { $0.name.lowercased() < $1.name.lowercased() }
+        }
     }
 }

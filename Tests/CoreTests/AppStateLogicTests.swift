@@ -137,6 +137,10 @@ final class AppStateLogicTests: XCTestCase {
         XCTAssertTrue(AppStateLogic.isCheckboxLine("  - [ ] Buy", forTitle: "Buy"))
     }
 
+    func testIsCheckboxLineMatchesMultilineTodoTitleUsingFirstLine() {
+        XCTAssertTrue(AppStateLogic.isCheckboxLine("- [ ] Buy groceries", forTitle: "Buy groceries\nRemember oat milk"))
+    }
+
     func testIsCheckboxLineRejectsNonCheckbox() {
         XCTAssertFalse(AppStateLogic.isCheckboxLine("Just a Buy line", forTitle: "Buy"))
     }
@@ -165,6 +169,16 @@ final class AppStateLogicTests: XCTestCase {
     func testToggleCheckboxReturnsNilWhenNoMatch() {
         let toggled = AppStateLogic.toggleCheckbox(in: "- [ ] Other", matching: "Buy")
         XCTAssertNil(toggled)
+    }
+
+    func testUpdateCheckboxRewritesDueDateAndTags() {
+        let content = "- [ ] Buy groceries 📅 2024-03-10 #old"
+        var item = Item(type: "todo", title: "Buy groceries", properties: [:], tags: ["new"], completed: true, sourceFile: "/tmp/x.md")
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        item.properties["dueDate"] = .date(formatter.date(from: "2024-03-15")!)
+        let updated = AppStateLogic.updateCheckbox(in: content, matching: "Buy groceries", with: item)
+        XCTAssertEqual(updated, "- [x] Buy groceries 📅 2024-03-15 #new")
     }
 
     // MARK: - deleteCheckbox
@@ -239,5 +253,31 @@ final class AppStateLogicTests: XCTestCase {
         XCTAssertTrue(updated!.contains("title: \"He said \\\"hi\\\"\""))
         XCTAssertTrue(updated!.contains("\"a\\\"b\""))
         XCTAssertTrue(updated!.contains("completed: true"))
+    }
+
+    func testUpdateYAMLItemWritesDateProperties() {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        let date = formatter.date(from: "2024-04-01")!
+        let item = Item(
+            type: "todo",
+            title: "Pay rent",
+            properties: ["dueDate": .date(date)],
+            tags: [],
+            completed: false,
+            sourceFile: "/tmp/x.md"
+        )
+        let content = """
+        ---
+        type: todo
+        title: Old
+        dueDate: 2024-03-01
+        ---
+        Body
+        """
+        let updated = AppStateLogic.updateYAMLItem(in: content, item: item)
+        XCTAssertNotNil(updated)
+        XCTAssertTrue(updated!.contains("dueDate: 2024-04-01"))
+        XCTAssertTrue(updated!.contains("title: \"Pay rent\""))
     }
 }
