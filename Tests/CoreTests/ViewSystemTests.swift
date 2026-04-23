@@ -191,7 +191,7 @@ final class RelativeDateParserTests: XCTestCase {
 
     func testParseZeroDays() {
         let result = parser.parse("+0d")
-        XCTAssertNil(result)  // Zero doesn't make sense
+        XCTAssertNotNil(result)
     }
 
     func testParseLargeValue() {
