@@ -181,6 +181,14 @@ final class AppStateLogicTests: XCTestCase {
         XCTAssertEqual(updated, "- [x] Buy groceries 📅 2024-03-15 #new")
     }
 
+    func testUpdateCheckboxWritesPriorityEmojiForP1() {
+        let content = "- [ ] Prepare report"
+        var item = Item(type: "todo", title: "Prepare report", properties: [:], tags: [], completed: false, sourceFile: "/tmp/x.md")
+        item.properties["priority"] = .text("p1")
+        let updated = AppStateLogic.updateCheckbox(in: content, matching: "Prepare report", with: item)
+        XCTAssertEqual(updated, "- [ ] Prepare report ⏫")
+    }
+
     // MARK: - deleteCheckbox
 
     func testDeleteCheckboxRemovesMatchingLine() {

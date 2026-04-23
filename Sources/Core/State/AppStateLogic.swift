@@ -153,6 +153,8 @@ public enum AppStateLogic {
     /// Checkbox lines are single-line; parser titles can include additional
     /// continuation lines for multiline todos. Match against the first line.
     private static func normalizedCheckboxMatchTitle(_ title: String) -> String {
+        // Fallback to original title when first line is unavailable to avoid
+        // producing an empty match key for malformed multiline strings.
         title
             .components(separatedBy: .newlines)
             .first?
@@ -301,6 +303,7 @@ public enum AppStateLogic {
 
         let isoFull = ISO8601DateFormatter()
         isoFull.formatOptions = [.withFullDate]
+        // Keep a stable key order so YAML diffs remain deterministic.
         for (key, value) in item.properties.sorted(by: { $0.key < $1.key }) {
             if key == "type" || key == "title" || key == "tags" || key == "completed" { continue }
             switch value {

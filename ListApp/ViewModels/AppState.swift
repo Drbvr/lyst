@@ -38,7 +38,11 @@ class AppState {
     var items: [Item]
     var savedViews: [SavedView]
     var listTypes: [ListType] {
-        didSet { persistListTypes() }
+        didSet {
+            if listTypes != oldValue {
+                persistListTypes()
+            }
+        }
     }
     var isLoadingItems: Bool = false
     var currentVaultURL: URL? = nil
@@ -466,7 +470,9 @@ class AppState {
             }
         }
         let merged = byName.values.sorted { $0.name.lowercased() < $1.name.lowercased() }
-        if merged != listTypes {
+        let existingKeys = listTypes.map { $0.name.lowercased() }.sorted()
+        let mergedKeys = merged.map { $0.name.lowercased() }.sorted()
+        if existingKeys != mergedKeys {
             listTypes = merged
         }
     }

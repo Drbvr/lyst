@@ -14,6 +14,7 @@ struct ListTypeDetailView: View {
     let listType: ListType
     @State private var fields: [EditableField]
     @State private var extractionPrompt: String
+    @State private var showFieldValidation = false
 
     init(listType: ListType) {
         self.listType = listType
@@ -108,12 +109,22 @@ struct ListTypeDetailView: View {
                 Button("Save") { save() }
             }
         }
+        .alert("Field names required", isPresented: $showFieldValidation) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please provide a name for each field before saving.")
+        }
     }
 
     private func save() {
-        let cleanedFields = fields
-            .map { $0.asFieldDefinition }
-            .filter { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        let hasEmptyFieldNames = fields.contains {
+            $0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        if hasEmptyFieldNames {
+            showFieldValidation = true
+            return
+        }
+        let cleanedFields = fields.map { $0.asFieldDefinition }
         let updated = ListType(
             name: listType.name,
             fields: cleanedFields,
