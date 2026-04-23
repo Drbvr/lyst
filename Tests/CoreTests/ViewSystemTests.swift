@@ -190,8 +190,11 @@ final class RelativeDateParserTests: XCTestCase {
     // MARK: - Edge Cases
 
     func testParseZeroDays() {
-        let result = parser.parse("+0d")
-        XCTAssertNotNil(result)
+        guard let result = parser.parse("+0d") else {
+            XCTFail("Expected date for +0d, got nil")
+            return
+        }
+        XCTAssertTrue(Calendar.current.isDate(result, inSameDayAs: Date()))
     }
 
     func testParseLargeValue() {
