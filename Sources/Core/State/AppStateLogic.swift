@@ -216,7 +216,7 @@ public enum AppStateLogic {
 
             if case .text(let p) = item.properties["priority"] {
                 let emoji: String
-                switch p {
+                switch p.lowercased() {
                 case "high", "p1": emoji = "⏫"
                 case "medium", "p2": emoji = "🔼"
                 case "low", "p3", "p4": emoji = "🔽"

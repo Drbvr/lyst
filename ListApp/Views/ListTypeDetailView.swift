@@ -23,7 +23,8 @@ struct ListTypeDetailView: View {
     }
 
     var body: some View {
-        let items = appState.items.filter { $0.type.lowercased() == listType.name.lowercased() }
+        let listTypeName = listType.name.lowercased()
+        let items = appState.items.filter { $0.type.lowercased() == listTypeName }
 
         List {
             Section {
