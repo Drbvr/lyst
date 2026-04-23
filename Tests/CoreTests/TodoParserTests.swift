@@ -390,4 +390,17 @@ final class TodoParserTests: XCTestCase {
         XCTAssertEqual(items1[0].completed, true)
         XCTAssertEqual(items2[0].completed, true)
     }
+
+    func testFrontmatterTagsStripQuotes() {
+        let markdown = """
+        ---
+        type: restaurant
+        title: \"Test Place\"
+        tags: [\"restaurant\", \"food/date\"]
+        ---
+        """
+        let items = parser.parseTodos(from: markdown, sourceFile: "restaurant.md")
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].tags, ["restaurant", "food/date"])
+    }
 }

@@ -83,7 +83,7 @@ public actor NoteIndexer {
                     let raw = t.dropFirst("tags:".count).trimmingCharacters(in: .whitespaces)
                     let stripped = raw.trimmingCharacters(in: CharacterSet(charactersIn: "[] "))
                     tags = stripped.components(separatedBy: ",").map {
-                        $0.trimmingCharacters(in: .whitespaces)
+                        $0.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'")))
                     }.filter { !$0.isEmpty }
                 }
             }

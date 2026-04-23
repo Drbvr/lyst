@@ -208,9 +208,13 @@ public actor ChatToolRunner {
 
     private func runListNotes(_ args: ListNotesArgs) async -> (String, [NoteRef]) {
         let limit = min(args.limit ?? 50, 200)
+        let normalizedTag = args.tag
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "#.,;:!?\"'")) }
+            .flatMap { $0.isEmpty ? nil : $0 }
         let rows = await index.listNotes(
             folder: args.folder,
-            tags: args.tag.map { [$0] } ?? [],
+            tags: normalizedTag.map { [$0] } ?? [],
             limit: limit
         )
         let refs = rows.map { NoteRef(file: $0.file) }

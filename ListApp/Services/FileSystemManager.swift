@@ -106,7 +106,7 @@ class AppFileSystemManager {
     /// Write an item back to its source file (update properties).
     /// Only supported for YAML frontmatter items; markdown-only checkbox files
     /// have no metadata to update.
-    func writeItem(_ item: Item) async -> Bool {
+    func writeItem(_ item: Item, originalTitle: String? = nil) async -> Bool {
         error = nil
 
         guard case .success(let content) = coreFileSystem.readFile(at: item.sourceFile) else {
@@ -114,14 +114,20 @@ class AppFileSystemManager {
             return false
         }
 
-        guard content.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("---") else {
-            error = "Cannot update item properties in markdown-only files. Use YAML frontmatter."
-            return false
-        }
-
-        guard let newContent = AppStateLogic.updateYAMLItem(in: content, item: item) else {
-            error = "Invalid YAML frontmatter"
-            return false
+        let newContent: String
+        if content.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("---") {
+            guard let updated = AppStateLogic.updateYAMLItem(in: content, item: item) else {
+                error = "Invalid YAML frontmatter"
+                return false
+            }
+            newContent = updated
+        } else {
+            let titleToMatch = originalTitle ?? item.title
+            guard let updated = AppStateLogic.updateCheckbox(in: content, matching: titleToMatch, with: item) else {
+                error = "Could not find item '\(item.title)' in source file"
+                return false
+            }
+            newContent = updated
         }
         let ok = writeOrReport(newContent, to: item.sourceFile)
         if ok, let indexer = noteIndexer {

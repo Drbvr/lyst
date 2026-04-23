@@ -150,7 +150,7 @@ struct SettingsView: View {
     }
 
     private func iconForType(_ type: String) -> String {
-        switch type {
+        switch type.lowercased() {
         case "movie": return "film"
         case "book": return "book.closed"
         case "todo": return "checkmark.circle"
