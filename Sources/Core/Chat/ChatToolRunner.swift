@@ -401,7 +401,7 @@ public actor ChatToolRunner {
 
         // Project filter (top-level tag)
         if let project = project {
-            filtered = filtered.filter { $0.tags.contains { $0.hasPrefix(project) } }
+            filtered = filtered.filter { $0.tags.contains { $0 == project || $0.hasPrefix("\(project)/") } }
         }
 
         let maxLimit = min(limit ?? 20, 100)

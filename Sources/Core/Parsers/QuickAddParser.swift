@@ -101,7 +101,8 @@ public enum QuickAddParser {
                 i += 1; continue
             }
             if lower == "tomorrow" || lower == "tmrw" {
-                result.dueDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
+                let start = calendar.startOfDay(for: now)
+                result.dueDate = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86400)
                 i += 1; continue
             }
             if lower == "tonight" {

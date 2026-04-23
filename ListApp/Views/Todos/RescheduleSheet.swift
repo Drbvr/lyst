@@ -26,9 +26,9 @@ struct RescheduleSheet: View {
                 VStack(spacing: 16) {
                     HStack(spacing: 8) {
                         chip("Today")      { set(cal.startOfDay(for: .now)) }
-                        chip("Tomorrow")   { set(cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: .now))!) }
+                        chip("Tomorrow")   { if let d = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: .now)) { set(d) } }
                         chip("Weekend")    { set(nextWeekend()) }
-                        chip("Next week")  { set(cal.date(byAdding: .day, value: 7, to: cal.startOfDay(for: .now))!) }
+                        chip("Next week")  { if let d = cal.date(byAdding: .day, value: 7, to: cal.startOfDay(for: .now)) { set(d) } }
                         chip("Someday")    { apply(nil) }
                     }
                     .padding(.horizontal, 16)

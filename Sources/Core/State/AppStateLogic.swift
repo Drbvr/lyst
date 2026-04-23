@@ -59,10 +59,11 @@ public enum AppStateLogic {
         if case .text(let p) = properties["priority"] {
             let emoji: String
             switch p {
-            case "high":   emoji = "⏫"
-            case "medium": emoji = "🔼"
-            case "low":    emoji = "🔽"
-            default:       emoji = ""
+            case "high",   "p1": emoji = "⏫"
+            case "medium", "p2": emoji = "🔼"
+            case "p3":           emoji = "🔽"
+            case "low",    "p4": emoji = "🔽"
+            default:             emoji = ""
             }
             if !emoji.isEmpty { line += " \(emoji)" }
         }
@@ -77,14 +78,14 @@ public enum AppStateLogic {
         return line
     }
 
-    /// Append a todo line to the existing inbox content, normalizing trailing
-    /// newlines so the result has exactly one blank line between entries.
-    /// CRLF in the existing content is converted to LF so appended lines don't
-    /// mix line endings within the same file.
+    /// Append a todo line to the existing inbox content.
+    /// Ensures exactly one newline separates the existing content from the new
+    /// entry (no spurious blank lines). CRLF is normalised to LF.
     public static func appendTodoToInbox(existingContent: String, line: String) -> String {
         var base = existingContent.replacingOccurrences(of: "\r\n", with: "\n")
-        if !base.hasSuffix("\n") { base += "\n" }
-        return base + line + "\n"
+        // Strip all trailing newlines then add exactly one before the new entry.
+        while base.hasSuffix("\n") { base.removeLast() }
+        return base + "\n" + line + "\n"
     }
 
     // MARK: - YAML item serialization

@@ -10,6 +10,12 @@ public class ObsidianTodoParser: MarkdownParser {
 
     private let yamlParser = YAMLFrontmatterParser()
 
+    // Compiled once; reused across every parsed file and line.
+    private static let checkboxRegex = try! NSRegularExpression(pattern: "^\\s*[-*]\\s+\\[(.?)\\]")
+    private static let checkboxStripRegex = try! NSRegularExpression(pattern: "^\\s*[-*]\\s+\\[.?\\]\\s*")
+    private static let tagRegex = try! NSRegularExpression(pattern: "#([\\w/]+)")
+    private static let dateRegex = try! NSRegularExpression(pattern: "📅\\s*(\\d{4}-\\d{2}-\\d{2})(?:T(\\d{2}):(\\d{2}))?")
+
     public init() {}
 
     /// Parses markdown content and extracts items.
@@ -80,20 +86,16 @@ public class ObsidianTodoParser: MarkdownParser {
     /// Extracts checkbox from a line (returns "[ ]" or "[x]" if found)
     private func extractCheckbox(from line: String) -> Substring? {
         // Match "- [ ]", "- [x]", "* [ ]", "* [x]"
-        let pattern = "^\\s*[-*]\\s+\\[(.?)\\]"
-        if let regex = try? NSRegularExpression(pattern: pattern) {
-            let range = NSRange(line.startIndex..., in: line)
-            if let match = regex.firstMatch(in: line, range: range) {
-                if let checkboxRange = Range(match.range(at: 0), in: line) {
-                    let checkbox = line[checkboxRange]
-                    // Extract just the bracket part
-                    if let bracketStart = checkbox.firstIndex(of: "["),
-                       let bracketEnd = checkbox.lastIndex(of: "]") {
-                        let nextIndex = checkbox.index(after: bracketEnd)
-                        if nextIndex <= checkbox.endIndex {
-                            return checkbox[bracketStart..<nextIndex]
-                        }
-                    }
+        let range = NSRange(line.startIndex..., in: line)
+        if let match = Self.checkboxRegex.firstMatch(in: line, range: range),
+           let checkboxRange = Range(match.range(at: 0), in: line) {
+            let checkbox = line[checkboxRange]
+            // Extract just the bracket part
+            if let bracketStart = checkbox.firstIndex(of: "["),
+               let bracketEnd = checkbox.lastIndex(of: "]") {
+                let nextIndex = checkbox.index(after: bracketEnd)
+                if nextIndex <= checkbox.endIndex {
+                    return checkbox[bracketStart..<nextIndex]
                 }
             }
         }
@@ -102,14 +104,8 @@ public class ObsidianTodoParser: MarkdownParser {
 
     /// Extracts todo text after the checkbox
     private func extractTodoText(from line: String) -> String {
-        // Remove the checkbox part and return the text
-        let pattern = "^\\s*[-*]\\s+\\[.?\\]\\s*"
-        if let regex = try? NSRegularExpression(pattern: pattern) {
-            let range = NSRange(line.startIndex..., in: line)
-            let result = regex.stringByReplacingMatches(in: line, range: range, withTemplate: "")
-            return result
-        }
-        return line
+        let range = NSRange(line.startIndex..., in: line)
+        return Self.checkboxStripRegex.stringByReplacingMatches(in: line, range: range, withTemplate: "")
     }
 
     /// Creates an Item from parsed todo components
@@ -164,47 +160,22 @@ public class ObsidianTodoParser: MarkdownParser {
 
     /// Extracts tags from text
     private func extractTags(from text: String) -> [String] {
-        var tags: [String] = []
-        let pattern = "#([\\w/]+)"
-
-        if let regex = try? NSRegularExpression(pattern: pattern) {
-            let range = NSRange(text.startIndex..., in: text)
-            let matches = regex.matches(in: text, range: range)
-
-            for match in matches {
-                if let tagRange = Range(match.range(at: 1), in: text) {
-                    let tag = String(text[tagRange])
-                    tags.append(tag)
-                }
-            }
+        let range = NSRange(text.startIndex..., in: text)
+        return Self.tagRegex.matches(in: text, range: range).compactMap { match in
+            Range(match.range(at: 1), in: text).map { String(text[$0]) }
         }
-
-        return tags
     }
 
     /// Extracts due date from text
     private func extractDate(from text: String) -> Date? {
         // Look for 📅 YYYY-MM-DD or 📅 YYYY-MM-DDTHH:MM
-        let pattern = "📅\\s*(\\d{4}-\\d{2}-\\d{2})(?:T(\\d{2}):(\\d{2}))?"
-
-        if let regex = try? NSRegularExpression(pattern: pattern) {
-            let range = NSRange(text.startIndex..., in: text)
-            if let match = regex.firstMatch(in: text, range: range) {
-                if let dateRange = Range(match.range(at: 1), in: text) {
-                    let dateString = String(text[dateRange])
-
-                    // Try to parse date
-                    let formatter = ISO8601DateFormatter()
-                    formatter.formatOptions = [.withFullDate]
-
-                    if let date = formatter.date(from: dateString) {
-                        return date
-                    }
-                }
-            }
-        }
-
-        return nil
+        let range = NSRange(text.startIndex..., in: text)
+        guard let match = Self.dateRegex.firstMatch(in: text, range: range),
+              let dateRange = Range(match.range(at: 1), in: text) else { return nil }
+        let dateString = String(text[dateRange])
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        return formatter.date(from: dateString)
     }
 
     /// Extracts priority from text

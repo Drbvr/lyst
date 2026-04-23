@@ -52,11 +52,11 @@ public class FullTextSearchEngine: SearchEngine {
             if let titleMatches = findMatches(in: item.title, query: lowerQuery, field: "title") {
                 matches.append(contentsOf: titleMatches)
 
-                if item.title.lowercased().contains(lowerQuery) {
-                    // Exact match in title
+                if item.title.lowercased() == lowerQuery {
+                    // Full title matches the query exactly
                     score += Double(titleMatches.count) * 10
-                } else if item.title.lowercased().range(of: lowerQuery) != nil {
-                    // Contains match in title
+                } else {
+                    // Query is a substring of the title
                     score += Double(titleMatches.count) * 5
                 }
             }

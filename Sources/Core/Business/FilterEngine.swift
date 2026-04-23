@@ -68,9 +68,7 @@ public class ItemFilterEngine: FilterEngine {
 
         // Filter items that have at least one matching tag (OR logic between tags)
         return items.filter { item in
-            !item.tags.isEmpty && item.tags.contains { tag in
-                expandedTags.contains(tag)
-            }
+            item.tags.contains { tag in expandedTags.contains(tag) }
         }
     }
 

@@ -37,7 +37,7 @@ enum TodoQueries {
         func sortByPriority(_ a: [Item]) -> [Item] {
             a.sorted { (TodoPriorityRank.from($0)) < (TodoPriorityRank.from($1)) }
         }
-        return (sortByPriority(overdue), sortByPriority(today), noDate)
+        return (sortByPriority(overdue), sortByPriority(today), sortByPriority(noDate))
     }
 
     static func forWeek(_ items: [Item], startOfWeek: Date) -> [[Item]] {

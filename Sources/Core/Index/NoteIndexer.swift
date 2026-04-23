@@ -52,8 +52,10 @@ public actor NoteIndexer {
     private func extractMetadata(from content: String, path: String) -> (title: String, body: String, tags: [String]) {
         let lines = content.components(separatedBy: .newlines)
 
-        // Check for YAML frontmatter
-        if content.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("---") {
+        // Check for YAML frontmatter — test the first line, not the whole-content
+        // trim, so a file that starts with blank lines is not incorrectly treated
+        // as having frontmatter (which would cause the inner i==0 check to fail).
+        if lines.first?.trimmingCharacters(in: .whitespaces) == "---" {
             var yamlLines: [String] = []
             var bodyStart = 0
             var inFrontmatter = false

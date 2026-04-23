@@ -230,11 +230,10 @@ final class ChatViewModel {
             }
         }
 
-        if var refreshed = messages.first(where: { $0.id == messageId })?.draftBundle {
-            refreshed.isSaved = true
-            if let mi = messages.firstIndex(where: { $0.id == messageId }) {
-                messages[mi].draftBundle = refreshed
-            }
+        if let mi = messages.firstIndex(where: { $0.id == messageId }),
+           var bundle = messages[mi].draftBundle {
+            bundle.isSaved = true
+            messages[mi].draftBundle = bundle
         }
 
         let noun = savedCount == 1 ? "note" : "notes"
